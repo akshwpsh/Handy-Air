@@ -1210,11 +1210,13 @@ impl TranscriptionManager {
                             // The translations endpoint only ever emits English.
                             OutputLanguageEvidence::TranslatedToEnglish
                         } else {
-                            match settings.selected_language.trim() {
-                                "" | "auto" => OutputLanguageEvidence::Unknown,
-                                selected => {
-                                    OutputLanguageEvidence::UserSelected(selected.to_string())
-                                }
+                            // The code actually sent to the endpoint, not the
+                            // stored intent - the local path credits the applied
+                            // hint the same way, and "zh-Hans" would not match
+                            // the base codes the filter works in.
+                            match crate::transcription_api::endpoint_language(&settings) {
+                                Some(language) => OutputLanguageEvidence::UserSelected(language),
+                                None => OutputLanguageEvidence::Unknown,
                             }
                         };
                         // Custom words went to the endpoint as a prompt, so fuzzy

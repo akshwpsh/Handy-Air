@@ -221,10 +221,7 @@ pub fn request_from_settings(settings: &AppSettings) -> Result<ApiRequest, Strin
         return Err("Transcription API model is not set".to_string());
     }
 
-    let language = match settings.selected_language.trim() {
-        "" | "auto" => None,
-        selected => Some(selected.to_string()),
-    };
+    let language = endpoint_language(settings);
 
     Ok(ApiRequest {
         base_url,
@@ -234,6 +231,31 @@ pub fn request_from_settings(settings: &AppSettings) -> Result<ApiRequest, Strin
         translate: settings.translate_to_english,
         api_key,
     })
+}
+
+/// The language code to send with the upload, and the one to credit the result
+/// to afterwards.
+///
+/// `language` on an OpenAI-compatible endpoint is an ISO-639-1 code. Handy's
+/// picker also offers `zh-Hans` and `zh-Hant`, which are output *intents* - the
+/// bare `zh` is hidden because all three recognise identically. Sending an
+/// intent verbatim is a 400 from the endpoint, and with Local Fallback off
+/// (the default) that fails the dictation outright, so the script subtag is
+/// dropped here. The Local Engine does the same thing via
+/// `normalize_cjk_language`; this lives separately because it answers what the
+/// *endpoint* accepts, not what a loaded model advertises.
+pub(crate) fn endpoint_language(settings: &AppSettings) -> Option<String> {
+    match settings.selected_language.trim() {
+        "" | "auto" => None,
+        // "zh-Hant" -> "zh", "haw" -> "haw", "en" -> "en".
+        selected => Some(
+            selected
+                .split(['-', '_'])
+                .next()
+                .unwrap_or(selected)
+                .to_string(),
+        ),
+    }
 }
 
 /// Reject audio that cannot fit the upload limit before spending time encoding
@@ -437,7 +459,11 @@ async fn send(request: ApiRequest, wav: Vec<u8>) -> Result<String, String> {
 
 /// List the models an endpoint offers, for the settings dropdown. Doubles as
 /// the key check: a bad key answers 401 here without costing a transcription.
-pub async fn list_models(base_url: &str, api_key: &str) -> Result<Vec<String>, String> {
+/// Ask an endpoint for its model catalogue.
+///
+/// Split out from `list_models` so that verifying a key can tell "this endpoint
+/// publishes no catalogue" apart from "this endpoint rejected you".
+async fn models_response(base_url: &str, api_key: &str) -> Result<reqwest::Response, String> {
     let base_url = base_url.trim().trim_end_matches('/');
     if base_url.is_empty() {
         return Err("Transcription API endpoint is not set".to_string());
@@ -454,12 +480,49 @@ pub async fn list_models(base_url: &str, api_key: &str) -> Result<Vec<String>, S
         .build()
         .map_err(|e| report_reqwest_error("Failed to build the Transcription API client", &e))?;
 
-    let response = client
+    client
         .get(&url)
         .bearer_auth(api_key.trim())
         .send()
         .await
-        .map_err(|e| report_reqwest_error("Failed to list Transcription API models", &e))?;
+        .map_err(|e| report_reqwest_error("Failed to list Transcription API models", &e))
+}
+
+/// Statuses that mean "this endpoint serves no model catalogue", as opposed to
+/// "this endpoint turned you away".
+fn endpoint_publishes_no_catalogue(status: reqwest::StatusCode) -> bool {
+    matches!(status.as_u16(), 404 | 405 | 501)
+}
+
+/// Check that an endpoint accepts this key, without insisting it publish a
+/// catalogue.
+///
+/// `/audio/transcriptions` is the only route Handy actually needs. Several
+/// self-hosted OpenAI-compatible servers - whisper.cpp's among them - serve it
+/// and nothing else, so requiring `/models` to answer would lock those users
+/// out of onboarding entirely for an endpoint that works. A refusal (401/403)
+/// is still a refusal.
+pub async fn verify_endpoint(base_url: &str, api_key: &str) -> Result<(), String> {
+    let response = models_response(base_url, api_key).await?;
+    let status = response.status();
+
+    if status.is_success() {
+        return Ok(());
+    }
+    if endpoint_publishes_no_catalogue(status) {
+        log::info!(
+            "Endpoint answered {} for the model list; it serves no catalogue, so the key could not be checked ahead of time",
+            status
+        );
+        return Ok(());
+    }
+
+    let body = response.text().await.unwrap_or_default();
+    Err(describe_status_error(status, &body))
+}
+
+pub async fn list_models(base_url: &str, api_key: &str) -> Result<Vec<String>, String> {
+    let response = models_response(base_url, api_key).await?;
 
     let status = response.status();
     if !status.is_success() {
@@ -642,6 +705,31 @@ mod tests {
         assert_eq!(
             request_from_settings(&settings).unwrap().language,
             Some("ko".to_string())
+        );
+    }
+
+    #[test]
+    fn chinese_output_intents_are_sent_as_a_language_the_endpoint_accepts() {
+        // The picker only offers zh-Hans/zh-Hant; neither is ISO-639-1, and an
+        // endpoint answers 400. With Local Fallback off that failed every
+        // dictation a Chinese user attempted.
+        let mut settings = get_default_settings();
+        settings.transcription_api_key = "key".to_string().into();
+
+        for intent in ["zh-Hans", "zh-Hant"] {
+            settings.selected_language = intent.to_string();
+            assert_eq!(
+                request_from_settings(&settings).unwrap().language,
+                Some("zh".to_string()),
+                "{intent} must collapse to the base code"
+            );
+        }
+
+        // Three-letter codes are already valid and must survive intact.
+        settings.selected_language = "haw".to_string();
+        assert_eq!(
+            request_from_settings(&settings).unwrap().language,
+            Some("haw".to_string())
         );
     }
 

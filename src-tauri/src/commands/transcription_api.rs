@@ -9,15 +9,16 @@ use crate::transcription_api;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 
-/// Resolve the key to probe with: an explicitly typed one wins, otherwise fall
-/// back to whatever is already stored (including the post-processing key that
-/// serves the same endpoint).
-fn key_for_probe(app: &AppHandle, typed: &str) -> String {
+/// Resolve the key to probe `base_url` with: an explicitly typed one wins,
+/// otherwise a stored key - but only one belonging to that same endpoint. The
+/// URL here is whatever the user has typed into the form, which is not
+/// necessarily the one in settings.
+fn key_for_probe(app: &AppHandle, base_url: &str, typed: &str) -> String {
     let typed = typed.trim();
     if !typed.is_empty() {
         return typed.to_string();
     }
-    get_settings(app).resolved_transcription_api_key()
+    get_settings(app).transcription_api_key_for(base_url)
 }
 
 /// List the models an endpoint offers.
@@ -31,7 +32,7 @@ pub async fn list_transcription_api_models(
     base_url: String,
     api_key: String,
 ) -> Result<Vec<String>, String> {
-    let key = key_for_probe(&app, &api_key);
+    let key = key_for_probe(&app, &base_url, &api_key);
     transcription_api::list_models(&base_url, &key).await
 }
 
@@ -60,12 +61,10 @@ pub async fn complete_onboarding_with_transcription_api(
 
     // Verify before committing: completing onboarding on a key that does not
     // work would drop the user into an app that cannot transcribe anything.
-    let probe_key = if api_key.is_empty() {
-        get_settings(&app).resolved_transcription_api_key()
-    } else {
-        api_key.clone()
-    };
-    transcription_api::list_models(&base_url, &probe_key).await?;
+    // An endpoint that serves no model catalogue still passes - see
+    // `verify_endpoint`.
+    let probe_key = key_for_probe(&app, &base_url, &api_key);
+    transcription_api::verify_endpoint(&base_url, &probe_key).await?;
 
     let mut settings = get_settings(&app);
     settings.transcription_api_enabled = true;

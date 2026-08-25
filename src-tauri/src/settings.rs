@@ -1034,12 +1034,26 @@ impl AppSettings {
     /// on base URL rather than always reusing the Groq key means a user who
     /// points the endpoint elsewhere never has a Groq key sent to it.
     pub fn resolved_transcription_api_key(&self) -> String {
-        let own = self.transcription_api_key.trim();
-        if !own.is_empty() {
-            return own.to_string();
+        self.transcription_api_key_for(&self.transcription_api_base_url)
+    }
+
+    /// The key to authenticate a request to `base_url` with.
+    ///
+    /// Every stored key was entered for a particular endpoint, so none of them
+    /// travels to a different one: onboarding and the settings panel both probe
+    /// a URL the user is still typing, and resolving against the *saved* URL
+    /// would hand that host a key it was never meant to see. A key typed into
+    /// the form is passed by the caller and does not come through here.
+    pub fn transcription_api_key_for(&self, base_url: &str) -> String {
+        let target = normalize_base_url(base_url);
+
+        if normalize_base_url(&self.transcription_api_base_url) == target {
+            let own = self.transcription_api_key.trim();
+            if !own.is_empty() {
+                return own.to_string();
+            }
         }
 
-        let target = normalize_base_url(&self.transcription_api_base_url);
         self.post_process_providers
             .iter()
             .find(|provider| normalize_base_url(&provider.base_url) == target)
