@@ -46,16 +46,11 @@ struct ReasoningParams {
     reasoning: Option<ReasoningConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     thinking: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    reasoning_format: Option<String>,
 }
 
 impl ReasoningParams {
     fn is_empty(&self) -> bool {
-        self.reasoning_effort.is_none()
-            && self.reasoning.is_none()
-            && self.thinking.is_none()
-            && self.reasoning_format.is_none()
+        self.reasoning_effort.is_none() && self.reasoning.is_none() && self.thinking.is_none()
     }
 }
 
@@ -71,16 +66,6 @@ fn reasoning_disable_params(provider: &PostProcessProvider) -> ReasoningParams {
             thinking: Some(serde_json::json!({ "type": "disabled" })),
             ..Default::default()
         }
-    } else if provider.id == "groq" {
-        // Groq's reasoning models (Qwen 3.6, MiniMax M2.7) otherwise emit their
-        // thinking inside message.content, which lands in the user's document.
-        // "hidden" returns the final answer only. Groq rejects the field when
-        // JSON mode is on, but its providers advertise no structured output, so
-        // post-processing never combines the two.
-        ReasoningParams {
-            reasoning_format: Some("hidden".to_string()),
-            ..Default::default()
-        }
     } else if provider.id == "openrouter" {
         // OpenRouter nested object; exclude:true also keeps reasoning text out
         // of the response so it can't pollute structured-output JSON parsing
@@ -92,6 +77,12 @@ fn reasoning_disable_params(provider: &PostProcessProvider) -> ReasoningParams {
             ..Default::default()
         }
     } else {
+        // Groq lands here too, deliberately. Its `reasoning_format: "hidden"`
+        // only hides the thinking - the model still generates it and still
+        // spends the completion budget, so the answer gets cut off (measured on
+        // qwen/qwen3.6-27b: 2048 tokens burnt, `finish_reason: length`, empty
+        // content). `reasoning_effort: "none"` actually stops it thinking and
+        // answers the same request in ~51 tokens.
         ReasoningParams {
             reasoning_effort: Some("none".to_string()),
             ..Default::default()
@@ -143,6 +134,10 @@ struct ChatCompletionResponse {
 #[derive(Debug, Deserialize)]
 struct ChatChoice {
     message: ChatMessageResponse,
+    /// "length" means the model hit the completion-token ceiling mid-answer.
+    /// Absent on endpoints that omit it, which is treated as "not truncated".
+    #[serde(default)]
+    finish_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -505,10 +500,23 @@ pub async fn send_chat_completion_with_schema(
         .await
         .map_err(|e| report_reqwest_error("Failed to parse API response", &e))?;
 
-    Ok(completion
-        .choices
-        .first()
-        .and_then(|choice| choice.message.content.clone())
+    let Some(choice) = completion.choices.first() else {
+        return Ok(None);
+    };
+
+    // A truncated answer is not a usable one: it ends mid-word, and pasting it
+    // would replace the user's dictation with a fragment of itself. Report it
+    // as an error so the caller keeps the original transcript instead.
+    if choice.finish_reason.as_deref() == Some("length") {
+        return Err(
+            "the model ran out of completion tokens and its answer was cut off".to_string(),
+        );
+    }
+
+    Ok(choice
+        .message
+        .content
+        .clone()
         .map(|content| strip_reasoning_block(&content)))
 }
 
@@ -752,11 +760,33 @@ Cleaned text."
     }
 
     #[test]
-    fn groq_asks_for_the_final_answer_only() {
+    fn groq_is_asked_to_stop_thinking_not_merely_to_hide_it() {
+        // Regression guard. `reasoning_format: "hidden"` suppresses the thinking
+        // in the response but not its token cost, which truncated the answer.
         let params = reasoning_disable_params(&provider("groq", "https://api.groq.com/openai/v1"));
         let json = request_json(params);
-        assert_eq!(json["reasoning_format"], "hidden");
-        assert!(json.get("reasoning_effort").is_none());
+        assert_eq!(json["reasoning_effort"], "none");
+        assert!(json.get("reasoning_format").is_none());
+    }
+
+    #[test]
+    fn a_cut_off_answer_is_rejected_rather_than_pasted() {
+        let response: ChatCompletionResponse = serde_json::from_str(
+            r#"{"choices":[{"message":{"content":"half a sen"},"finish_reason":"length"}]}"#,
+        )
+        .expect("response should parse");
+        let choice = response.choices.first().expect("one choice");
+        assert_eq!(choice.finish_reason.as_deref(), Some("length"));
+    }
+
+    #[test]
+    fn a_missing_finish_reason_is_not_treated_as_truncation() {
+        // Not every OpenAI-compatible endpoint sends the field.
+        let response: ChatCompletionResponse =
+            serde_json::from_str(r#"{"choices":[{"message":{"content":"done"}}]}"#)
+                .expect("response should parse");
+        let choice = response.choices.first().expect("one choice");
+        assert!(choice.finish_reason.is_none());
     }
 
     #[test]
