@@ -45,3 +45,6 @@ result
 
 # Python bytecode (scripts/)
 __pycache__/
+
+# Transcription API live-test credentials — never commit a key
+src-tauri/tests/groq_key.txt

@@ -118,6 +118,20 @@
         "checkFailed": "Misslyckades med att kontrollera behörigheter. Försök igen.",
         "requestFailed": "Misslyckades med att begära behörighet. Försök igen."
       }
+    },
+    "transcriptionApi": {
+      "title": "Börja utan att ladda ner en modell",
+      "description": "Använd ett taligenkännings-API i stället. Bäst för datorer som har svårt att köra en modell lokalt.",
+      "setUp": "Ställ in",
+      "privacyWarning": "Dina inspelningar laddas upp till slutpunkten nedan.",
+      "baseUrl": "Slutpunkt",
+      "apiKey": "API-nyckel",
+      "apiKeyPlaceholder": "Klistra in din API-nyckel",
+      "model": "Modell",
+      "loadModels": "Ladda modeller",
+      "start": "Börja",
+      "checking": "Kontrollerar...",
+      "cancel": "Avbryt"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Visa nyheter",
         "description": "Visa versionsinformation efter Handy-uppdateringar"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "Transkriptions-API",
+      "enable": {
+        "title": "Transkribera via ett API",
+        "description": "Skicka inspelningar till en taligenkänningstjänst i stället för att köra en modell på den här datorn. Praktiskt när lokal transkribering är för långsam."
+      },
+      "privacyWarning": "Dina inspelningar laddas upp till den slutpunkt du ställer in. Transkriberingen sker inte längre bara på den här datorn.",
+      "baseUrl": {
+        "title": "Slutpunkt",
+        "description": "Vilken OpenAI-kompatibel /audio/transcriptions-slutpunkt som helst. Groq som standard."
+      },
+      "apiKey": {
+        "title": "API-nyckel",
+        "description": "Sparas som klartext i appens inställningsfil.",
+        "placeholder": "Klistra in din API-nyckel"
+      },
+      "model": {
+        "title": "Modell",
+        "description": "Vilken taligenkänningsmodell som ska användas. Ladda listan för att se vad slutpunkten erbjuder.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Ladda modeller"
+      },
+      "localFallback": {
+        "title": "Fall tillbaka på en lokal modell",
+        "description": "Om API:et misslyckas, transkribera med en nedladdad modell i stället. Kräver en lokal modell och kan vara långsamt."
       }
     }
   },

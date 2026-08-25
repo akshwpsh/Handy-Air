@@ -118,6 +118,20 @@
         "checkFailed": "権限の確認に失敗しました。もう一度お試しください。",
         "requestFailed": "権限のリクエストに失敗しました。もう一度お試しください。"
       }
+    },
+    "transcriptionApi": {
+      "title": "モデルをダウンロードせずに開始",
+      "description": "代わりに音声認識APIを使います。モデルをローカルで動かすのが難しいパソコンに最適です。",
+      "setUp": "設定する",
+      "privacyWarning": "録音した音声は下のエンドポイントへアップロードされます。",
+      "baseUrl": "エンドポイント",
+      "apiKey": "APIキー",
+      "apiKeyPlaceholder": "APIキーを貼り付けてください",
+      "model": "モデル",
+      "loadModels": "モデルを読み込む",
+      "start": "開始",
+      "checking": "確認中...",
+      "cancel": "キャンセル"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "新機能を表示",
         "description": "Handy のアップデート後にリリースノートを表示"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "文字起こしAPI",
+      "enable": {
+        "title": "APIで文字起こしする",
+        "description": "このパソコンでモデルを実行する代わりに、音声認識サービスへ録音を送信します。ローカルでの文字起こしが遅いときに便利です。"
+      },
+      "privacyWarning": "録音した音声は設定したエンドポイントへアップロードされます。文字起こしはこのパソコン内だけでは行われなくなります。",
+      "baseUrl": {
+        "title": "エンドポイント",
+        "description": "OpenAI 互換の /audio/transcriptions エンドポイント。既定は Groq です。"
+      },
+      "apiKey": {
+        "title": "APIキー",
+        "description": "このアプリの設定ファイルに平文で保存されます。",
+        "placeholder": "APIキーを貼り付けてください"
+      },
+      "model": {
+        "title": "モデル",
+        "description": "使用する音声認識モデル。一覧を読み込むとエンドポイントが提供するモデルを確認できます。",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "モデルを読み込む"
+      },
+      "localFallback": {
+        "title": "ローカルモデルにフォールバック",
+        "description": "APIが失敗した場合、ダウンロード済みのモデルで文字起こしします。ローカルモデルが必要で、遅くなることがあります。"
       }
     }
   },

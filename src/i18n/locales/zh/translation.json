@@ -118,6 +118,20 @@
         "checkFailed": "检查权限失败。请重试。",
         "requestFailed": "请求权限失败。请重试。"
       }
+    },
+    "transcriptionApi": {
+      "title": "无需下载模型即可开始",
+      "description": "改用语音识别 API。适合难以在本地运行模型的电脑。",
+      "setUp": "设置",
+      "privacyWarning": "录音会上传到下面的端点。",
+      "baseUrl": "端点",
+      "apiKey": "API 密钥",
+      "apiKeyPlaceholder": "粘贴你的 API 密钥",
+      "model": "模型",
+      "loadModels": "加载模型",
+      "start": "开始",
+      "checking": "检查中...",
+      "cancel": "取消"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "显示新功能",
         "description": "Handy 更新后显示发行说明"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "转录 API",
+      "enable": {
+        "title": "通过 API 转录",
+        "description": "将录音发送到语音识别服务，而不是在本机运行模型。当本地转录太慢时很有用。"
+      },
+      "privacyWarning": "录音会上传到你配置的端点。转录将不再只在本机进行。",
+      "baseUrl": {
+        "title": "端点",
+        "description": "任何兼容 OpenAI 的 /audio/transcriptions 端点。默认为 Groq。"
+      },
+      "apiKey": {
+        "title": "API 密钥",
+        "description": "以明文形式保存在本应用的设置文件中。",
+        "placeholder": "粘贴你的 API 密钥"
+      },
+      "model": {
+        "title": "模型",
+        "description": "要使用的语音识别模型。加载列表可查看该端点提供的模型。",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "加载模型"
+      },
+      "localFallback": {
+        "title": "回退到本地模型",
+        "description": "如果 API 失败，则改用已下载的模型转录。需要本地模型，且可能较慢。"
       }
     }
   },

@@ -118,6 +118,20 @@
         "checkFailed": "Không thể kiểm tra quyền. Vui lòng thử lại.",
         "requestFailed": "Không thể yêu cầu quyền. Vui lòng thử lại."
       }
+    },
+    "transcriptionApi": {
+      "title": "Bắt đầu mà không cần tải mô hình",
+      "description": "Dùng API nhận dạng giọng nói thay thế. Phù hợp nhất với máy tính khó chạy mô hình cục bộ.",
+      "setUp": "Thiết lập",
+      "privacyWarning": "Bản ghi âm của bạn sẽ được tải lên điểm cuối bên dưới.",
+      "baseUrl": "Điểm cuối",
+      "apiKey": "Khóa API",
+      "apiKeyPlaceholder": "Dán khóa API của bạn",
+      "model": "Mô hình",
+      "loadModels": "Tải mô hình",
+      "start": "Bắt đầu",
+      "checking": "Đang kiểm tra...",
+      "cancel": "Hủy"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Hiển thị điểm mới",
         "description": "Hiển thị ghi chú phát hành sau khi Handy cập nhật"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "API chuyển lời nói thành văn bản",
+      "enable": {
+        "title": "Chuyển lời nói qua API",
+        "description": "Gửi bản ghi tới dịch vụ nhận dạng giọng nói thay vì chạy mô hình trên máy này. Hữu ích khi chuyển đổi cục bộ quá chậm."
+      },
+      "privacyWarning": "Bản ghi âm của bạn được tải lên điểm cuối bạn cấu hình. Việc chuyển đổi không còn chỉ diễn ra trên máy này.",
+      "baseUrl": {
+        "title": "Điểm cuối",
+        "description": "Bất kỳ điểm cuối /audio/transcriptions tương thích OpenAI nào. Mặc định là Groq."
+      },
+      "apiKey": {
+        "title": "Khóa API",
+        "description": "Được lưu dưới dạng văn bản thuần trong tệp cài đặt của ứng dụng này.",
+        "placeholder": "Dán khóa API của bạn"
+      },
+      "model": {
+        "title": "Mô hình",
+        "description": "Mô hình nhận dạng giọng nói sẽ dùng. Tải danh sách để xem điểm cuối cung cấp những gì.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Tải mô hình"
+      },
+      "localFallback": {
+        "title": "Quay lại mô hình cục bộ",
+        "description": "Nếu API thất bại, hãy chuyển đổi bằng mô hình đã tải về. Cần có mô hình cục bộ và có thể chậm."
       }
     }
   },

@@ -118,6 +118,20 @@
         "checkFailed": "Error al verificar permisos. Por favor, inténtalo de nuevo.",
         "requestFailed": "Error al solicitar permiso. Por favor, inténtalo de nuevo."
       }
+    },
+    "transcriptionApi": {
+      "title": "Empezar sin descargar un modelo",
+      "description": "Usar una API de reconocimiento de voz en su lugar. Ideal para equipos que apenas pueden ejecutar un modelo localmente.",
+      "setUp": "Configurar",
+      "privacyWarning": "Tus grabaciones se subirán al endpoint de abajo.",
+      "baseUrl": "Endpoint",
+      "apiKey": "Clave de API",
+      "apiKeyPlaceholder": "Pega tu clave de API",
+      "model": "Modelo",
+      "loadModels": "Cargar modelos",
+      "start": "Empezar",
+      "checking": "Comprobando...",
+      "cancel": "Cancelar"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Mostrar novedades",
         "description": "Mostrar notas de la versión después de las actualizaciones de Handy"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "API de transcripción",
+      "enable": {
+        "title": "Transcribir mediante una API",
+        "description": "Enviar las grabaciones a un servicio de reconocimiento de voz en lugar de ejecutar un modelo en este equipo. Útil cuando la transcripción local es demasiado lenta."
+      },
+      "privacyWarning": "Tus grabaciones se suben al endpoint que configures. La transcripción ya no ocurre solo en este equipo.",
+      "baseUrl": {
+        "title": "Endpoint",
+        "description": "Cualquier endpoint /audio/transcriptions compatible con OpenAI. Groq por defecto."
+      },
+      "apiKey": {
+        "title": "Clave de API",
+        "description": "Se guarda en texto plano en el archivo de ajustes de esta aplicación.",
+        "placeholder": "Pega tu clave de API"
+      },
+      "model": {
+        "title": "Modelo",
+        "description": "Qué modelo de reconocimiento de voz usar. Carga la lista para ver lo que ofrece el endpoint.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Cargar modelos"
+      },
+      "localFallback": {
+        "title": "Recurrir a un modelo local",
+        "description": "Si la API falla, transcribir con un modelo descargado. Requiere un modelo local y puede ser lento."
       }
     }
   },

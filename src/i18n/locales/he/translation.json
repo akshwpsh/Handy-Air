@@ -118,6 +118,20 @@
         "checkFailed": "בדיקת ההרשאות נכשלה. נסה שוב.",
         "requestFailed": "בקשת ההרשאה נכשלה. נסה שוב."
       }
+    },
+    "transcriptionApi": {
+      "title": "להתחיל בלי להוריד מודל",
+      "description": "להשתמש במקום זאת ב-API לזיהוי דיבור. מתאים במיוחד למחשבים שמתקשים להריץ מודל מקומית.",
+      "setUp": "הגדרה",
+      "privacyWarning": "ההקלטות שלך יועלו לנקודת הקצה שלמטה.",
+      "baseUrl": "נקודת קצה",
+      "apiKey": "מפתח API",
+      "apiKeyPlaceholder": "הדביקו את מפתח ה-API שלכם",
+      "model": "מודל",
+      "loadModels": "טעינת מודלים",
+      "start": "התחלה",
+      "checking": "בודק...",
+      "cancel": "ביטול"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "הצג מה חדש",
         "description": "הצג הערות גרסה לאחר עדכוני Handy"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "‏API לתמלול",
+      "enable": {
+        "title": "לתמלל דרך API",
+        "description": "שליחת ההקלטות לשירות זיהוי דיבור במקום להריץ מודל במחשב הזה. שימושי כשהתמלול המקומי איטי מדי."
+      },
+      "privacyWarning": "ההקלטות שלך מועלות לנקודת הקצה שהגדרת. התמלול כבר לא מתבצע רק במחשב הזה.",
+      "baseUrl": {
+        "title": "נקודת קצה",
+        "description": "כל נקודת קצה /audio/transcriptions תואמת OpenAI. ברירת המחדל היא Groq."
+      },
+      "apiKey": {
+        "title": "מפתח API",
+        "description": "נשמר כטקסט רגיל בקובץ ההגדרות של האפליקציה.",
+        "placeholder": "הדביקו את מפתח ה-API שלכם"
+      },
+      "model": {
+        "title": "מודל",
+        "description": "באיזה מודל זיהוי דיבור להשתמש. טענו את הרשימה כדי לראות מה נקודת הקצה מציעה.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "טעינת מודלים"
+      },
+      "localFallback": {
+        "title": "נפילה חזרה למודל מקומי",
+        "description": "אם ה-API נכשל, לתמלל עם מודל שהורד. דורש מודל מקומי ועלול להיות איטי."
       }
     }
   },

@@ -118,6 +118,20 @@
         "checkFailed": "Erro ao verificar permissões. Por favor, tente novamente.",
         "requestFailed": "Erro ao solicitar permissão. Por favor, tente novamente."
       }
+    },
+    "transcriptionApi": {
+      "title": "Começar sem transferir um modelo",
+      "description": "Usar antes uma API de reconhecimento de fala. Ideal para computadores com dificuldade em executar um modelo localmente.",
+      "setUp": "Configurar",
+      "privacyWarning": "As suas gravações serão enviadas para o endpoint abaixo.",
+      "baseUrl": "Endpoint",
+      "apiKey": "Chave de API",
+      "apiKeyPlaceholder": "Cole a sua chave de API",
+      "model": "Modelo",
+      "loadModels": "Carregar modelos",
+      "start": "Começar",
+      "checking": "A verificar...",
+      "cancel": "Cancelar"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Mostrar novidades",
         "description": "Mostrar notas de versão após atualizações do Handy"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "API de transcrição",
+      "enable": {
+        "title": "Transcrever por uma API",
+        "description": "Enviar as gravações para um serviço de reconhecimento de fala em vez de executar um modelo neste computador. Útil quando a transcrição local é lenta demais."
+      },
+      "privacyWarning": "As suas gravações são enviadas para o endpoint que configurar. A transcrição deixa de acontecer apenas neste computador.",
+      "baseUrl": {
+        "title": "Endpoint",
+        "description": "Qualquer endpoint /audio/transcriptions compatível com OpenAI. Groq por predefinição."
+      },
+      "apiKey": {
+        "title": "Chave de API",
+        "description": "Guardada em texto simples no ficheiro de definições desta aplicação.",
+        "placeholder": "Cole a sua chave de API"
+      },
+      "model": {
+        "title": "Modelo",
+        "description": "Que modelo de reconhecimento de fala usar. Carregue a lista para ver o que o endpoint oferece.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Carregar modelos"
+      },
+      "localFallback": {
+        "title": "Recorrer a um modelo local",
+        "description": "Se a API falhar, transcrever com um modelo transferido. Requer um modelo local e pode ser lento."
       }
     }
   },

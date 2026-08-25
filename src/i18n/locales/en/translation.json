@@ -118,6 +118,20 @@
         "checkFailed": "Failed to check permissions. Please try again.",
         "requestFailed": "Failed to request permission. Please try again."
       }
+    },
+    "transcriptionApi": {
+      "title": "Start without downloading a model",
+      "description": "Use a speech-to-text API instead. Best for computers that struggle to run a model locally.",
+      "setUp": "Set up",
+      "privacyWarning": "Your recorded audio will be uploaded to the endpoint below.",
+      "baseUrl": "Endpoint",
+      "apiKey": "API key",
+      "apiKeyPlaceholder": "Paste your API key",
+      "model": "Model",
+      "loadModels": "Load models",
+      "start": "Start",
+      "checking": "Checking...",
+      "cancel": "Cancel"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
           "description": "High-performance tensor library for on-device machine learning inference",
           "details": "Handy's local speech-to-text is built on transcribe.cpp and ggml. Thanks to the amazing work by Georgi Gerganov and contributors."
         }
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "Transcription API",
+      "enable": {
+        "title": "Transcribe over an API",
+        "description": "Send recordings to a speech-to-text service instead of running a model on this computer. Useful when local transcription is too slow."
+      },
+      "privacyWarning": "Your recorded audio is uploaded to the endpoint you configure. Transcription no longer happens only on this computer.",
+      "baseUrl": {
+        "title": "Endpoint",
+        "description": "Any OpenAI-compatible /audio/transcriptions endpoint. Defaults to Groq."
+      },
+      "apiKey": {
+        "title": "API key",
+        "description": "Saved as plain text in this app's settings file.",
+        "placeholder": "Paste your API key"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Which speech-to-text model to use. Load the list to see what the endpoint offers.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Load models"
+      },
+      "localFallback": {
+        "title": "Fall back to a local model",
+        "description": "If the API fails, transcribe with a downloaded model instead. Needs a local model and may be slow."
       }
     }
   },

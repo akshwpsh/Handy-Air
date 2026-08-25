@@ -118,6 +118,20 @@
         "checkFailed": "Kunne ikke tjekke tilladelser. Prøv igen.",
         "requestFailed": "Kunne ikke anmode om tilladelse. Prøv igen."
       }
+    },
+    "transcriptionApi": {
+      "title": "Start uden at downloade en model",
+      "description": "Brug et talegenkendelses-API i stedet. Bedst til computere, der har svært ved at køre en model lokalt.",
+      "setUp": "Konfigurér",
+      "privacyWarning": "Dine optagelser uploades til endpointet nedenfor.",
+      "baseUrl": "Endpoint",
+      "apiKey": "API-nøgle",
+      "apiKeyPlaceholder": "Indsæt din API-nøgle",
+      "model": "Model",
+      "loadModels": "Indlæs modeller",
+      "start": "Start",
+      "checking": "Kontrollerer...",
+      "cancel": "Annullér"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
           "description": "Højtydende tensor-bibliotek til maskinlæringsinferens på enheden",
           "details": "Handys lokale tale-til-tekst funktionalitet er bygget på transcribe.cpp og ggml. Tak for det fantastiske arbejde af Georgi Gerganov og bidragyderne."
         }
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "Transskriptions-API",
+      "enable": {
+        "title": "Transskribér via et API",
+        "description": "Send optagelser til en talegenkendelsestjeneste i stedet for at køre en model på denne computer. Nyttigt, når lokal transskription er for langsom."
+      },
+      "privacyWarning": "Dine optagelser uploades til det endpoint, du angiver. Transskription sker ikke længere kun på denne computer.",
+      "baseUrl": {
+        "title": "Endpoint",
+        "description": "Ethvert OpenAI-kompatibelt /audio/transcriptions-endpoint. Groq som standard."
+      },
+      "apiKey": {
+        "title": "API-nøgle",
+        "description": "Gemmes som klartekst i denne apps indstillingsfil.",
+        "placeholder": "Indsæt din API-nøgle"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Hvilken talegenkendelsesmodel der skal bruges. Indlæs listen for at se, hvad endpointet tilbyder.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Indlæs modeller"
+      },
+      "localFallback": {
+        "title": "Fald tilbage til en lokal model",
+        "description": "Hvis API'et fejler, så transskribér med en downloadet model i stedet. Kræver en lokal model og kan være langsomt."
       }
     }
   },

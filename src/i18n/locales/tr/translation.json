@@ -118,6 +118,20 @@
         "checkFailed": "İzinler kontrol edilemedi. Lütfen tekrar deneyin.",
         "requestFailed": "İzin isteği başarısız oldu. Lütfen tekrar deneyin."
       }
+    },
+    "transcriptionApi": {
+      "title": "Model indirmeden başla",
+      "description": "Bunun yerine bir konuşma tanıma API'si kullanın. Modeli yerel olarak zor çalıştıran bilgisayarlar için idealdir.",
+      "setUp": "Kur",
+      "privacyWarning": "Kayıtlarınız aşağıdaki uç noktaya yüklenecek.",
+      "baseUrl": "Uç nokta",
+      "apiKey": "API anahtarı",
+      "apiKeyPlaceholder": "API anahtarınızı yapıştırın",
+      "model": "Model",
+      "loadModels": "Modelleri yükle",
+      "start": "Başla",
+      "checking": "Kontrol ediliyor...",
+      "cancel": "İptal"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Yenilikleri Göster",
         "description": "Handy güncellemelerinden sonra sürüm notlarını göster"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "Transkripsiyon API'si",
+      "enable": {
+        "title": "API ile yazıya dök",
+        "description": "Modeli bu bilgisayarda çalıştırmak yerine kayıtları bir konuşma tanıma servisine gönderin. Yerel transkripsiyon çok yavaşsa kullanışlıdır."
+      },
+      "privacyWarning": "Kayıtlarınız yapılandırdığınız uç noktaya yüklenir. Transkripsiyon artık yalnızca bu bilgisayarda gerçekleşmez.",
+      "baseUrl": {
+        "title": "Uç nokta",
+        "description": "OpenAI uyumlu herhangi bir /audio/transcriptions uç noktası. Varsayılan Groq."
+      },
+      "apiKey": {
+        "title": "API anahtarı",
+        "description": "Bu uygulamanın ayar dosyasında düz metin olarak saklanır.",
+        "placeholder": "API anahtarınızı yapıştırın"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Hangi konuşma tanıma modelinin kullanılacağı. Uç noktanın neler sunduğunu görmek için listeyi yükleyin.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Modelleri yükle"
+      },
+      "localFallback": {
+        "title": "Yerel modele geri dön",
+        "description": "API başarısız olursa indirilmiş bir modelle yazıya dök. Yerel bir model gerektirir ve yavaş olabilir."
       }
     }
   },

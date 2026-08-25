@@ -118,6 +118,20 @@
         "checkFailed": "Machtigingen controleren mislukt. Probeer het opnieuw.",
         "requestFailed": "Machtiging aanvragen mislukt. Probeer het opnieuw."
       }
+    },
+    "transcriptionApi": {
+      "title": "Beginnen zonder model te downloaden",
+      "description": "Gebruik in plaats daarvan een spraakherkennings-API. Ideaal voor computers die een model lokaal nauwelijks aankunnen.",
+      "setUp": "Instellen",
+      "privacyWarning": "Je opnames worden geüpload naar het eindpunt hieronder.",
+      "baseUrl": "Eindpunt",
+      "apiKey": "API-sleutel",
+      "apiKeyPlaceholder": "Plak je API-sleutel",
+      "model": "Model",
+      "loadModels": "Modellen laden",
+      "start": "Beginnen",
+      "checking": "Controleren...",
+      "cancel": "Annuleren"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
           "description": "Krachtige tensorbibliotheek voor lokale AI-verwerking",
           "details": "Handy's lokale spraak-naar-tekst is gebouwd op transcribe.cpp en ggml. Met dank aan het geweldige werk van Georgi Gerganov en alle bijdragers."
         }
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "Transcriptie-API",
+      "enable": {
+        "title": "Transcriberen via een API",
+        "description": "Stuur opnames naar een spraakherkenningsdienst in plaats van een model op deze computer te draaien. Handig als lokale transcriptie te traag is."
+      },
+      "privacyWarning": "Je opnames worden geüpload naar het eindpunt dat je instelt. Transcriptie gebeurt niet langer alleen op deze computer.",
+      "baseUrl": {
+        "title": "Eindpunt",
+        "description": "Elk OpenAI-compatibel /audio/transcriptions-eindpunt. Standaard Groq."
+      },
+      "apiKey": {
+        "title": "API-sleutel",
+        "description": "Wordt als platte tekst opgeslagen in het instellingenbestand van deze app.",
+        "placeholder": "Plak je API-sleutel"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Welk spraakherkenningsmodel wordt gebruikt. Laad de lijst om te zien wat het eindpunt aanbiedt.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Modellen laden"
+      },
+      "localFallback": {
+        "title": "Terugvallen op een lokaal model",
+        "description": "Als de API faalt, transcribeer dan met een gedownload model. Vereist een lokaal model en kan traag zijn."
       }
     }
   },

@@ -118,6 +118,20 @@
         "checkFailed": "Nie udało się sprawdzić uprawnień. Spróbuj ponownie.",
         "requestFailed": "Nie udało się poprosić o uprawnienie. Spróbuj ponownie."
       }
+    },
+    "transcriptionApi": {
+      "title": "Zacznij bez pobierania modelu",
+      "description": "Użyj zamiast tego API rozpoznawania mowy. Najlepsze dla komputerów, którym trudno uruchomić model lokalnie.",
+      "setUp": "Skonfiguruj",
+      "privacyWarning": "Twoje nagrania zostaną przesłane do poniższego punktu końcowego.",
+      "baseUrl": "Punkt końcowy",
+      "apiKey": "Klucz API",
+      "apiKeyPlaceholder": "Wklej swój klucz API",
+      "model": "Model",
+      "loadModels": "Wczytaj modele",
+      "start": "Zacznij",
+      "checking": "Sprawdzanie...",
+      "cancel": "Anuluj"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Pokaż nowości",
         "description": "Pokazuj informacje o wydaniu po aktualizacjach Handy"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "API transkrypcji",
+      "enable": {
+        "title": "Transkrybuj przez API",
+        "description": "Wysyłaj nagrania do usługi rozpoznawania mowy zamiast uruchamiać model na tym komputerze. Przydatne, gdy lokalna transkrypcja jest zbyt wolna."
+      },
+      "privacyWarning": "Twoje nagrania są przesyłane do skonfigurowanego punktu końcowego. Transkrypcja nie odbywa się już wyłącznie na tym komputerze.",
+      "baseUrl": {
+        "title": "Punkt końcowy",
+        "description": "Dowolny zgodny z OpenAI punkt końcowy /audio/transcriptions. Domyślnie Groq."
+      },
+      "apiKey": {
+        "title": "Klucz API",
+        "description": "Zapisywany jako zwykły tekst w pliku ustawień tej aplikacji.",
+        "placeholder": "Wklej swój klucz API"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Który model rozpoznawania mowy zastosować. Wczytaj listę, aby zobaczyć, co oferuje punkt końcowy.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Wczytaj modele"
+      },
+      "localFallback": {
+        "title": "Wróć do modelu lokalnego",
+        "description": "Jeśli API zawiedzie, transkrybuj pobranym modelem. Wymaga modelu lokalnego i może być wolne."
       }
     }
   },

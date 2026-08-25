@@ -118,6 +118,20 @@
         "checkFailed": "Échec de la vérification des autorisations. Veuillez réessayer.",
         "requestFailed": "Échec de la demande d'autorisation. Veuillez réessayer."
       }
+    },
+    "transcriptionApi": {
+      "title": "Démarrer sans télécharger de modèle",
+      "description": "Utiliser plutôt une API de reconnaissance vocale. Idéal pour les ordinateurs qui peinent à exécuter un modèle localement.",
+      "setUp": "Configurer",
+      "privacyWarning": "Vos enregistrements seront envoyés au point de terminaison ci-dessous.",
+      "baseUrl": "Point de terminaison",
+      "apiKey": "Clé API",
+      "apiKeyPlaceholder": "Collez votre clé API",
+      "model": "Modèle",
+      "loadModels": "Charger les modèles",
+      "start": "Démarrer",
+      "checking": "Vérification...",
+      "cancel": "Annuler"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Afficher les nouveautés",
         "description": "Afficher les notes de version après les mises à jour de Handy"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "API de transcription",
+      "enable": {
+        "title": "Transcrire via une API",
+        "description": "Envoyer les enregistrements à un service de reconnaissance vocale au lieu d'exécuter un modèle sur cet ordinateur. Utile quand la transcription locale est trop lente."
+      },
+      "privacyWarning": "Vos enregistrements sont envoyés au point de terminaison configuré. La transcription ne se fait plus uniquement sur cet ordinateur.",
+      "baseUrl": {
+        "title": "Point de terminaison",
+        "description": "Tout point de terminaison /audio/transcriptions compatible OpenAI. Groq par défaut."
+      },
+      "apiKey": {
+        "title": "Clé API",
+        "description": "Enregistrée en clair dans le fichier de paramètres de cette application.",
+        "placeholder": "Collez votre clé API"
+      },
+      "model": {
+        "title": "Modèle",
+        "description": "Le modèle de reconnaissance vocale à utiliser. Chargez la liste pour voir ce que propose le point de terminaison.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Charger les modèles"
+      },
+      "localFallback": {
+        "title": "Revenir à un modèle local",
+        "description": "Si l'API échoue, transcrire avec un modèle téléchargé. Nécessite un modèle local et peut être lent."
       }
     }
   },

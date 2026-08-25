@@ -118,6 +118,20 @@
         "checkFailed": "Nepodařilo se zkontrolovat oprávnění. Zkuste to prosím znovu.",
         "requestFailed": "Nepodařilo se požádat o oprávnění. Zkuste to prosím znovu."
       }
+    },
+    "transcriptionApi": {
+      "title": "Začít bez stahování modelu",
+      "description": "Použít místo toho API pro rozpoznávání řeči. Ideální pro počítače, které model lokálně sotva zvládnou.",
+      "setUp": "Nastavit",
+      "privacyWarning": "Vaše nahrávky budou nahrány na koncový bod níže.",
+      "baseUrl": "Koncový bod",
+      "apiKey": "API klíč",
+      "apiKeyPlaceholder": "Vložte svůj API klíč",
+      "model": "Model",
+      "loadModels": "Načíst modely",
+      "start": "Začít",
+      "checking": "Kontroluji...",
+      "cancel": "Zrušit"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Zobrazovat novinky",
         "description": "Zobrazovat poznámky k vydání po aktualizacích Handy"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "API pro přepis",
+      "enable": {
+        "title": "Přepisovat přes API",
+        "description": "Posílat nahrávky do služby rozpoznávání řeči místo spouštění modelu na tomto počítači. Užitečné, když je místní přepis příliš pomalý."
+      },
+      "privacyWarning": "Vaše nahrávky se nahrávají na nastavený koncový bod. Přepis už neprobíhá jen na tomto počítači.",
+      "baseUrl": {
+        "title": "Koncový bod",
+        "description": "Jakýkoli koncový bod /audio/transcriptions kompatibilní s OpenAI. Výchozí je Groq."
+      },
+      "apiKey": {
+        "title": "API klíč",
+        "description": "Ukládá se jako prostý text v souboru nastavení této aplikace.",
+        "placeholder": "Vložte svůj API klíč"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Který model rozpoznávání řeči použít. Načtěte seznam a uvidíte, co koncový bod nabízí.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Načíst modely"
+      },
+      "localFallback": {
+        "title": "Přejít na místní model",
+        "description": "Pokud API selže, přepsat místo toho staženým modelem. Vyžaduje místní model a může být pomalé."
       }
     }
   },

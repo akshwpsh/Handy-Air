@@ -732,6 +732,14 @@ impl TranscriptionManager {
 
     /// Kicks off the model loading in a background thread if it's not already loaded
     pub fn initiate_model_load(&self) {
+        // In API mode the Local Engine is never the transcription path, and not
+        // spending its 1-3 GB of RAM is the whole point. Local Fallback loads a
+        // model lazily, only once a request has actually failed.
+        if crate::transcription_api::is_enabled(&get_settings(&self.app_handle)) {
+            debug!("Transcription API is enabled; skipping the local model load");
+            return;
+        }
+
         let mut is_loading = self.is_loading.lock().unwrap();
         if *is_loading {
             return;
@@ -1183,6 +1191,63 @@ impl TranscriptionManager {
             debug!("Empty audio vector");
             self.maybe_unload_immediately("empty audio");
             return Ok(String::new());
+        }
+
+        // The Transcription API replaces the Local Engine entirely, so it has to
+        // answer before anything below tries to lock or load an engine — in API
+        // mode there is often no local model installed at all.
+        // See docs/adr/0002-transcription-api-as-a-parallel-path.md.
+        {
+            let settings = get_settings(&self.app_handle);
+            if crate::transcription_api::is_enabled(&settings) {
+                match crate::transcription_api::transcribe(&settings, &audio) {
+                    Ok(text) => {
+                        // Text Filtering runs for API results exactly as it does
+                        // for local ones. Custom words already went to the
+                        // endpoint as a prompt, so fuzzy correction is skipped
+                        // here for the same reason it is skipped for whisper.
+                        let filtered = post_process_transcription_text(
+                            text,
+                            &settings,
+                            true,
+                            &OutputLanguageEvidence::Unknown,
+                            &[],
+                        );
+                        info!(
+                            "Transcription API returned {} chars in {:?}",
+                            filtered.len(),
+                            st.elapsed()
+                        );
+                        return Ok(filtered);
+                    }
+                    Err(api_error) => {
+                        if !crate::transcription_api::local_fallback_enabled(&settings) {
+                            return Err(anyhow::anyhow!(api_error));
+                        }
+                        warn!(
+                            "Transcription API failed ({}); falling back to the Local Engine",
+                            api_error
+                        );
+                        // Nothing was loaded up front in API mode, so the
+                        // fallback pays the load cost only now that it is needed.
+                        if !self.is_model_loaded() {
+                            if settings.selected_model.is_empty() {
+                                return Err(anyhow::anyhow!(
+                                    "{} (no local model is installed to fall back to)",
+                                    api_error
+                                ));
+                            }
+                            if let Err(load_error) = self.load_model(&settings.selected_model) {
+                                return Err(anyhow::anyhow!(
+                                    "{} (local fallback failed to load a model: {})",
+                                    api_error,
+                                    load_error
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Check if model is loaded, if not try to load it

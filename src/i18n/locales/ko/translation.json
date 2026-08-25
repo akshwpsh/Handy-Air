@@ -118,6 +118,20 @@
         "checkFailed": "권한 확인에 실패했습니다. 다시 시도해주세요.",
         "requestFailed": "권한 요청에 실패했습니다. 다시 시도해주세요."
       }
+    },
+    "transcriptionApi": {
+      "title": "모델을 내려받지 않고 시작하기",
+      "description": "대신 음성 인식 API를 사용합니다. 모델을 로컬에서 돌리기 버거운 컴퓨터에 적합합니다.",
+      "setUp": "설정하기",
+      "privacyWarning": "녹음된 오디오가 아래 엔드포인트로 업로드됩니다.",
+      "baseUrl": "엔드포인트",
+      "apiKey": "API 키",
+      "apiKeyPlaceholder": "API 키를 붙여넣으세요",
+      "model": "모델",
+      "loadModels": "모델 불러오기",
+      "start": "시작",
+      "checking": "확인 중...",
+      "cancel": "취소"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "새 소식 표시",
         "description": "Handy 업데이트 후 릴리스 노트를 표시합니다"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "전사 API",
+      "enable": {
+        "title": "API로 전사하기",
+        "description": "이 컴퓨터에서 모델을 실행하는 대신 음성 인식 서비스로 녹음을 보냅니다. 로컬 전사가 너무 느릴 때 유용합니다."
+      },
+      "privacyWarning": "녹음된 오디오가 설정한 엔드포인트로 업로드됩니다. 더 이상 이 컴퓨터에서만 전사되지 않습니다.",
+      "baseUrl": {
+        "title": "엔드포인트",
+        "description": "OpenAI 호환 /audio/transcriptions 엔드포인트면 됩니다. 기본값은 Groq입니다."
+      },
+      "apiKey": {
+        "title": "API 키",
+        "description": "이 앱의 설정 파일에 평문으로 저장됩니다.",
+        "placeholder": "API 키를 붙여넣으세요"
+      },
+      "model": {
+        "title": "모델",
+        "description": "사용할 음성 인식 모델입니다. 목록을 불러오면 엔드포인트가 제공하는 모델을 볼 수 있습니다.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "모델 불러오기"
+      },
+      "localFallback": {
+        "title": "로컬 모델로 대체",
+        "description": "API가 실패하면 내려받은 모델로 전사합니다. 로컬 모델이 필요하며 느릴 수 있습니다."
       }
     }
   },

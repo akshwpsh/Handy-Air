@@ -118,6 +118,20 @@
         "checkFailed": "檢查權限失敗，請重試",
         "requestFailed": "請求權限失敗，請重試"
       }
+    },
+    "transcriptionApi": {
+      "title": "無需下載模型即可開始",
+      "description": "改用語音辨識 API。適合難以在本機執行模型的電腦。",
+      "setUp": "設定",
+      "privacyWarning": "錄音會上傳到下方的端點。",
+      "baseUrl": "端點",
+      "apiKey": "API 金鑰",
+      "apiKeyPlaceholder": "貼上你的 API 金鑰",
+      "model": "模型",
+      "loadModels": "載入模型",
+      "start": "開始",
+      "checking": "檢查中...",
+      "cancel": "取消"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "顯示新功能",
         "description": "Handy 更新後顯示版本資訊"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "轉錄 API",
+      "enable": {
+        "title": "透過 API 轉錄",
+        "description": "將錄音傳送到語音辨識服務，而不是在本機執行模型。當本機轉錄太慢時很有用。"
+      },
+      "privacyWarning": "錄音會上傳到你設定的端點。轉錄將不再只在本機進行。",
+      "baseUrl": {
+        "title": "端點",
+        "description": "任何相容 OpenAI 的 /audio/transcriptions 端點。預設為 Groq。"
+      },
+      "apiKey": {
+        "title": "API 金鑰",
+        "description": "以明文形式儲存在本應用程式的設定檔中。",
+        "placeholder": "貼上你的 API 金鑰"
+      },
+      "model": {
+        "title": "模型",
+        "description": "要使用的語音辨識模型。載入清單可查看該端點提供的模型。",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "載入模型"
+      },
+      "localFallback": {
+        "title": "回退到本機模型",
+        "description": "若 API 失敗，改用已下載的模型轉錄。需要本機模型，且可能較慢。"
       }
     }
   },

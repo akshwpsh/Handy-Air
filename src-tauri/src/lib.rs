@@ -20,6 +20,7 @@ mod secure_input;
 mod settings;
 mod shortcut;
 mod signal_handle;
+mod transcription_api;
 mod transcription_coordinator;
 mod tray;
 mod tray_i18n;
@@ -728,6 +729,8 @@ pub fn run(cli_args: CliArgs) {
             commands::history::retry_history_entry_transcription,
             commands::history::update_history_limit,
             commands::history::update_recording_retention_period,
+            commands::transcription_api::list_transcription_api_models,
+            commands::transcription_api::complete_onboarding_with_transcription_api,
             helpers::clamshell::is_laptop,
         ])
         .events(collect_events![

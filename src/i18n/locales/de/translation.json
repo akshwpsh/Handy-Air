@@ -118,6 +118,20 @@
         "checkFailed": "Berechtigungsprüfung fehlgeschlagen. Bitte erneut versuchen.",
         "requestFailed": "Berechtigungsanfrage fehlgeschlagen. Bitte erneut versuchen."
       }
+    },
+    "transcriptionApi": {
+      "title": "Ohne Modell-Download starten",
+      "description": "Stattdessen eine Spracherkennungs-API verwenden. Ideal für Computer, die Modelle lokal kaum ausführen können.",
+      "setUp": "Einrichten",
+      "privacyWarning": "Deine Aufnahmen werden an den Endpunkt unten hochgeladen.",
+      "baseUrl": "Endpunkt",
+      "apiKey": "API-Schlüssel",
+      "apiKeyPlaceholder": "API-Schlüssel einfügen",
+      "model": "Modell",
+      "loadModels": "Modelle laden",
+      "start": "Starten",
+      "checking": "Wird geprüft...",
+      "cancel": "Abbrechen"
     }
   },
   "modelSelector": {
@@ -612,6 +626,33 @@
       "whatsNewUpdates": {
         "label": "Neuerungen anzeigen",
         "description": "Versionshinweise nach Handy-Updates anzeigen"
+      }
+    },
+    "transcriptionApi": {
+      "groupTitle": "Transkriptions-API",
+      "enable": {
+        "title": "Über eine API transkribieren",
+        "description": "Aufnahmen an einen Spracherkennungsdienst senden, statt ein Modell auf diesem Computer auszuführen. Nützlich, wenn lokale Transkription zu langsam ist."
+      },
+      "privacyWarning": "Deine Aufnahmen werden an den konfigurierten Endpunkt hochgeladen. Die Transkription findet nicht mehr nur auf diesem Computer statt.",
+      "baseUrl": {
+        "title": "Endpunkt",
+        "description": "Jeder OpenAI-kompatible /audio/transcriptions-Endpunkt. Standard ist Groq."
+      },
+      "apiKey": {
+        "title": "API-Schlüssel",
+        "description": "Wird als Klartext in der Einstellungsdatei dieser App gespeichert.",
+        "placeholder": "API-Schlüssel einfügen"
+      },
+      "model": {
+        "title": "Modell",
+        "description": "Welches Spracherkennungsmodell verwendet wird. Lade die Liste, um zu sehen, was der Endpunkt anbietet.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Modelle laden"
+      },
+      "localFallback": {
+        "title": "Auf lokales Modell zurückfallen",
+        "description": "Wenn die API fehlschlägt, stattdessen mit einem heruntergeladenen Modell transkribieren. Erfordert ein lokales Modell und kann langsam sein."
       }
     }
   },

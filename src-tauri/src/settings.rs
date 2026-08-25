@@ -337,6 +337,37 @@ impl std::ops::DerefMut for SecretMap {
     }
 }
 
+/// A single secret value. Behaves like a `String` everywhere except `Debug`,
+/// where it redacts itself so keys cannot reach the logs. Like [`SecretMap`],
+/// this is a logging guard only — the value is stored in plain text in
+/// `settings_store.json`, exactly as the post-processing keys always have been.
+#[derive(Clone, Default, Serialize, Deserialize, Type)]
+#[serde(transparent)]
+pub struct SecretString(String);
+
+impl fmt::Debug for SecretString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_empty() {
+            f.write_str("\"\"")
+        } else {
+            f.write_str("\"[REDACTED]\"")
+        }
+    }
+}
+
+impl std::ops::Deref for SecretString {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<String> for SecretString {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
 /* still handy for composing the initial JSON in the store ------------- */
 /// The container-level `serde(default)` (backed by the `Default` impl below)
 /// guarantees every field — including ones added in the future — falls back to
@@ -435,6 +466,23 @@ pub struct AppSettings {
     pub post_process_prompts: Vec<LLMPrompt>,
     #[serde(default)]
     pub post_process_selected_prompt_id: Option<String>,
+    /// Transcription API: send recorded audio to an OpenAI-compatible
+    /// `/audio/transcriptions` endpoint instead of running a Local Engine.
+    /// Off by default — see docs/adr/0001-opt-in-transcription-api.md.
+    #[serde(default)]
+    pub transcription_api_enabled: bool,
+    #[serde(default = "default_transcription_api_base_url")]
+    pub transcription_api_base_url: String,
+    #[serde(default)]
+    pub transcription_api_key: SecretString,
+    #[serde(default = "default_transcription_api_model")]
+    pub transcription_api_model: String,
+    /// Fall back to the Local Engine when the Transcription API fails. Off by
+    /// default: a user who enabled the API usually did so because the Local
+    /// Engine is too slow on their machine, so a silent fallback would hand
+    /// them the exact stall they were avoiding.
+    #[serde(default)]
+    pub transcription_api_local_fallback: bool,
     #[serde(default)]
     pub mute_while_recording: bool,
     #[serde(default)]
@@ -742,6 +790,22 @@ fn default_post_process_models() -> HashMap<String, String> {
     map
 }
 
+/// Compare endpoint URLs ignoring case and a trailing slash.
+fn normalize_base_url(url: &str) -> String {
+    url.trim().trim_end_matches('/').to_lowercase()
+}
+
+pub const DEFAULT_TRANSCRIPTION_API_BASE_URL: &str = "https://api.groq.com/openai/v1";
+pub const DEFAULT_TRANSCRIPTION_API_MODEL: &str = "whisper-large-v3-turbo";
+
+fn default_transcription_api_base_url() -> String {
+    DEFAULT_TRANSCRIPTION_API_BASE_URL.to_string()
+}
+
+fn default_transcription_api_model() -> String {
+    DEFAULT_TRANSCRIPTION_API_MODEL.to_string()
+}
+
 fn default_post_process_prompts() -> Vec<LLMPrompt> {
     vec![LLMPrompt {
         id: "default_improve_transcriptions".to_string(),
@@ -925,6 +989,11 @@ pub fn get_default_settings() -> AppSettings {
         post_process_models: default_post_process_models(),
         post_process_prompts: default_post_process_prompts(),
         post_process_selected_prompt_id: None,
+        transcription_api_enabled: false,
+        transcription_api_base_url: default_transcription_api_base_url(),
+        transcription_api_key: SecretString::default(),
+        transcription_api_model: default_transcription_api_model(),
+        transcription_api_local_fallback: false,
         mute_while_recording: false,
         append_trailing_space: false,
         app_language: default_app_language(),
@@ -957,6 +1026,28 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
+    /// The key to authenticate Transcription API requests with.
+    ///
+    /// Falls back to the Post-processing key belonging to whichever configured
+    /// provider serves the same base URL, so a user who already entered a Groq
+    /// key for post-processing does not have to enter it a second time. Matching
+    /// on base URL rather than always reusing the Groq key means a user who
+    /// points the endpoint elsewhere never has a Groq key sent to it.
+    pub fn resolved_transcription_api_key(&self) -> String {
+        let own = self.transcription_api_key.trim();
+        if !own.is_empty() {
+            return own.to_string();
+        }
+
+        let target = normalize_base_url(&self.transcription_api_base_url);
+        self.post_process_providers
+            .iter()
+            .find(|provider| normalize_base_url(&provider.base_url) == target)
+            .and_then(|provider| self.post_process_api_keys.get(&provider.id))
+            .map(|key| key.trim().to_string())
+            .unwrap_or_default()
+    }
+
     pub fn active_post_process_provider(&self) -> Option<&PostProcessProvider> {
         self.post_process_providers
             .iter()
