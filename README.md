@@ -1,8 +1,28 @@
+> ### Handy Air
+>
+> A fork of [Handy](https://github.com/cjpais/Handy) by CJ Pais, adding an
+> optional **Transcription API**. Instead of running a speech model on your own
+> machine, Handy Air can send the recording to an OpenAI-compatible endpoint
+> (Groq by default, or any server you point it at) and get the text back, so it
+> is usable on a machine too small to run a local model.
+>
+> **That means your recorded voice leaves your computer while it is on.** It is
+> off by default, and every claim about offline operation below holds only while
+> it stays off. The reasoning is in
+> [docs/adr/0001-opt-in-transcription-api.md](docs/adr/0001-opt-in-transcription-api.md).
+>
+> Releases here are **unsigned** - Windows SmartScreen and macOS Gatekeeper will
+> warn before letting you run them.
+>
+> Everything below is upstream's README.
+
+---
+
 # Handy
 
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
-**A free, open source, and extensible speech-to-text application that works completely offline.**
+**A free, open source, and extensible speech-to-text application that works completely offline** (or, in this fork, through a transcription API when you turn one on).
 
 Handy is a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
 
@@ -12,7 +32,7 @@ Handy was created to fill the gap for a truly open source, extensible speech-to-
 
 - **Free**: Accessibility tooling belongs in everyone's hands, not behind a paywall
 - **Open Source**: Together we can build further. Extend Handy for yourself and contribute to something bigger
-- **Private**: Your voice stays on your computer. Get transcriptions without sending audio to the cloud
+- **Private**: Your voice stays on your computer, unless you turn on the Transcription API - then the recording goes to the endpoint you chose, and nowhere else
 - **Simple**: One tool, one job. Transcribe what you say and put it into a text box
 
 Handy isn't trying to be the best speech-to-text app—it's trying to be the most forkable one.
