@@ -166,7 +166,8 @@
     },
     "cancel": "Hủy",
     "cancelDownload": "Hủy tải xuống",
-    "legacy": "Cũ"
+    "legacy": "Cũ",
+    "transcriptionApi": "API chuyển lời nói thành văn bản"
   },
   "settings": {
     "modelSettings": {

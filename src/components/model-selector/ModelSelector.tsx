@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { commands } from "@/bindings";
 import { getTranslatedModelName } from "../../lib/utils/modelTranslation";
 import { useModelStore } from "../../stores/modelStore";
+import { useSettings } from "../../hooks/useSettings";
 import ModelStatusButton from "./ModelStatusButton";
 import ModelDropdown from "./ModelDropdown";
 import DownloadProgressDisplay from "./DownloadProgressDisplay";
@@ -26,6 +27,10 @@ interface ModelSelectorProps {
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
   const { t } = useTranslation();
+  const { settings } = useSettings();
+  // With the Transcription API on, the local model is not what transcribes.
+  // Naming it here would be a plain lie about where the words come from.
+  const transcriptionApiEnabled = settings?.transcription_api_enabled ?? false;
   const {
     models,
     currentModel,
@@ -200,6 +205,12 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
       }
     }
 
+    if (transcriptionApiEnabled) {
+      return (
+        settings?.transcription_api_model || t("modelSelector.transcriptionApi")
+      );
+    }
+
     const currentModelInfo = models.find((m) => m.id === displayModelId);
 
     switch (modelStatus) {
@@ -236,6 +247,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
 
   // Derive display status from model status + store state
   const getDisplayStatus = (): ModelStatus => {
+    // Transcription is available over the network, whatever the local
+    // engine is doing — reporting it as unloaded would read as broken.
+    if (transcriptionApiEnabled) return "ready";
     if (Object.keys(verifyingModels).length > 0) return "verifying";
     if (Object.keys(extractingModels).length > 0) return "extracting";
     if (Object.keys(downloadProgress).length > 0) return "downloading";

@@ -166,7 +166,8 @@
       "translate": "翻譯為英語",
       "streaming": "在您說話時即時顯示轉錄"
     },
-    "legacy": "舊版"
+    "legacy": "舊版",
+    "transcriptionApi": "轉錄 API"
   },
   "settings": {
     "modelSettings": {

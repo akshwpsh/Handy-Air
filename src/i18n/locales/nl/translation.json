@@ -166,7 +166,8 @@
       "translation": "Kan vertalen naar het Engels",
       "translate": "Vertalen",
       "streaming": "Toont live transcriptie tijdens het spreken"
-    }
+    },
+    "transcriptionApi": "Transcriptie-API"
   },
   "settings": {
     "modelSettings": {

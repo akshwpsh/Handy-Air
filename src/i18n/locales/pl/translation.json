@@ -166,7 +166,8 @@
     },
     "cancel": "Anuluj",
     "cancelDownload": "Anuluj pobieranie",
-    "legacy": "Przestarzałe"
+    "legacy": "Przestarzałe",
+    "transcriptionApi": "API transkrypcji"
   },
   "settings": {
     "modelSettings": {

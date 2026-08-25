@@ -166,7 +166,8 @@
       "translation": "अङ्ग्रेजीमा अनुवाद गर्न सक्छ",
       "translate": "अनुवाद",
       "streaming": "बोल्दै गर्दा लाइभ ट्रान्सक्रिप्सन देखाउँछ"
-    }
+    },
+    "transcriptionApi": "ट्रान्सक्रिप्शन API"
   },
   "settings": {
     "modelSettings": {

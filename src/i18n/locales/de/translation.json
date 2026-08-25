@@ -166,7 +166,8 @@
     },
     "cancel": "Abbrechen",
     "cancelDownload": "Download abbrechen",
-    "legacy": "Veraltet"
+    "legacy": "Veraltet",
+    "transcriptionApi": "Transkriptions-API"
   },
   "settings": {
     "modelSettings": {

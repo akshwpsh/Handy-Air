@@ -166,7 +166,8 @@
       "translate": "Översätt till engelska",
       "streaming": "Visar transkription i realtid medan du talar"
     },
-    "legacy": "Äldre"
+    "legacy": "Äldre",
+    "transcriptionApi": "Transkriptions-API"
   },
   "settings": {
     "modelSettings": {

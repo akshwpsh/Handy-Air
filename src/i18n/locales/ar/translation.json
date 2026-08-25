@@ -166,7 +166,8 @@
       "translate": "ترجمة",
       "streaming": "يعرض النسخ المباشر أثناء التحدث"
     },
-    "legacy": "قديم"
+    "legacy": "قديم",
+    "transcriptionApi": "واجهة برمجة النسخ"
   },
   "settings": {
     "general": {

@@ -166,7 +166,8 @@
     },
     "cancel": "Отмена",
     "cancelDownload": "Отменить загрузку",
-    "legacy": "Устаревшее"
+    "legacy": "Устаревшее",
+    "transcriptionApi": "API транскрибации"
   },
   "settings": {
     "modelSettings": {

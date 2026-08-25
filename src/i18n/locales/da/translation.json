@@ -166,7 +166,8 @@
       "translation": "Kan oversætte til engelsk",
       "translate": "Oversæt",
       "streaming": "Viser live transskription, mens du taler"
-    }
+    },
+    "transcriptionApi": "Transskriptions-API"
   },
   "settings": {
     "modelSettings": {

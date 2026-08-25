@@ -166,7 +166,8 @@
       "translation": "अंग्रेज़ी में अनुवाद कर सकता है",
       "translate": "अनुवाद करें",
       "streaming": "बोलते समय लाइव ट्रांसक्रिप्शन दिखाता है"
-    }
+    },
+    "transcriptionApi": "ट्रांसक्रिप्शन API"
   },
   "settings": {
     "modelSettings": {

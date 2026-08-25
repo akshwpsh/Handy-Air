@@ -166,7 +166,8 @@
     },
     "cancel": "Скасувати",
     "cancelDownload": "Скасувати завантаження",
-    "legacy": "Застаріле"
+    "legacy": "Застаріле",
+    "transcriptionApi": "API транскрибації"
   },
   "settings": {
     "modelSettings": {

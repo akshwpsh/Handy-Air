@@ -166,7 +166,8 @@
     },
     "cancel": "Zrušit",
     "cancelDownload": "Zrušit stahování",
-    "legacy": "Zastaralé"
+    "legacy": "Zastaralé",
+    "transcriptionApi": "API pro přepis"
   },
   "settings": {
     "modelSettings": {

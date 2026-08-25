@@ -166,7 +166,8 @@
     },
     "cancel": "İptal",
     "cancelDownload": "İndirmeyi iptal et",
-    "legacy": "Eski"
+    "legacy": "Eski",
+    "transcriptionApi": "Transkripsiyon API'si"
   },
   "settings": {
     "modelSettings": {

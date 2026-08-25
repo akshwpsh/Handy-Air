@@ -46,11 +46,16 @@ struct ReasoningParams {
     reasoning: Option<ReasoningConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     thinking: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reasoning_format: Option<String>,
 }
 
 impl ReasoningParams {
     fn is_empty(&self) -> bool {
-        self.reasoning_effort.is_none() && self.reasoning.is_none() && self.thinking.is_none()
+        self.reasoning_effort.is_none()
+            && self.reasoning.is_none()
+            && self.thinking.is_none()
+            && self.reasoning_format.is_none()
     }
 }
 
@@ -64,6 +69,16 @@ fn reasoning_disable_params(provider: &PostProcessProvider) -> ReasoningParams {
         // https://api-docs.deepseek.com/guides/thinking_mode
         ReasoningParams {
             thinking: Some(serde_json::json!({ "type": "disabled" })),
+            ..Default::default()
+        }
+    } else if provider.id == "groq" {
+        // Groq's reasoning models (Qwen 3.6, MiniMax M2.7) otherwise emit their
+        // thinking inside message.content, which lands in the user's document.
+        // "hidden" returns the final answer only. Groq rejects the field when
+        // JSON mode is on, but its providers advertise no structured output, so
+        // post-processing never combines the two.
+        ReasoningParams {
+            reasoning_format: Some("hidden".to_string()),
             ..Default::default()
         }
     } else if provider.id == "openrouter" {
@@ -294,6 +309,41 @@ pub(crate) fn report_reqwest_error(context: &str, error: &reqwest::Error) -> Str
     details
 }
 
+/// Remove a reasoning block a model left in its answer.
+///
+/// Asking an endpoint to skip reasoning is the first line of defence, but not
+/// every endpoint honours the request — a local Ollama model behind the custom
+/// provider will happily ignore it. Whatever slips through would otherwise be
+/// typed straight into the user's document, so a completed `<think>…</think>`
+/// block is dropped here as well.
+///
+/// Only balanced blocks are removed. An unterminated `<think>` means the model
+/// ran out of tokens mid-thought; there is no way to tell where an answer would
+/// have started, and discarding everything would silently throw the user's
+/// dictation away, so that text is left alone.
+fn strip_reasoning_block(content: &str) -> String {
+    const TAGS: [(&str, &str); 2] = [("<think>", "</think>"), ("<thinking>", "</thinking>")];
+
+    let mut text = content.to_string();
+    for (open, close) in TAGS {
+        loop {
+            let Some(start) = text.find(open) else { break };
+            let Some(end) = text[start..].find(close) else {
+                break;
+            };
+            let after = start + end + close.len();
+            text.replace_range(start..after, "");
+        }
+    }
+
+    if text.trim().is_empty() {
+        // The whole answer was reasoning. Returning the original is no better,
+        // but an empty string at least does not paste a thought process.
+        return String::new();
+    }
+    text.trim().to_string()
+}
+
 /// Send a chat completion request to an OpenAI-compatible API
 /// Returns Ok(Some(content)) on success, Ok(None) if response has no content,
 /// or Err on actual errors (HTTP, parsing, etc.)
@@ -458,7 +508,8 @@ pub async fn send_chat_completion_with_schema(
     Ok(completion
         .choices
         .first()
-        .and_then(|choice| choice.message.content.clone()))
+        .and_then(|choice| choice.message.content.clone())
+        .map(|content| strip_reasoning_block(&content)))
 }
 
 /// Fetch available models from an OpenAI-compatible API
@@ -660,6 +711,52 @@ mod tests {
         assert!(details.contains(&format!("url: {base_url}/private")));
         assert!(!details.contains("SECRET_QUERY_TOKEN"));
         assert!(!details.contains("#private"));
+    }
+
+    #[test]
+    fn a_leaked_reasoning_block_never_reaches_the_document() {
+        assert_eq!(
+            strip_reasoning_block("<think>weigh the options</think>Cleaned text."),
+            "Cleaned text."
+        );
+        assert_eq!(
+            strip_reasoning_block(
+                "<thinking>hmm</thinking>
+
+Cleaned text."
+            ),
+            "Cleaned text."
+        );
+        // Several blocks, and text that merely mentions the word.
+        assert_eq!(
+            strip_reasoning_block("<think>a</think>One <think>b</think>two."),
+            "One two."
+        );
+        assert_eq!(
+            strip_reasoning_block("I think that is right."),
+            "I think that is right."
+        );
+    }
+
+    #[test]
+    fn an_unterminated_reasoning_block_is_left_alone() {
+        // Truncated mid-thought: there is no way to know where the answer would
+        // have begun, and dropping it all would lose the user's dictation.
+        let truncated = "<think>step one, step two";
+        assert_eq!(strip_reasoning_block(truncated), truncated);
+    }
+
+    #[test]
+    fn an_answer_that_is_only_reasoning_yields_nothing() {
+        assert_eq!(strip_reasoning_block("<think>all of it</think>   "), "");
+    }
+
+    #[test]
+    fn groq_asks_for_the_final_answer_only() {
+        let params = reasoning_disable_params(&provider("groq", "https://api.groq.com/openai/v1"));
+        let json = request_json(params);
+        assert_eq!(json["reasoning_format"], "hidden");
+        assert!(json.get("reasoning_effort").is_none());
     }
 
     #[test]
