@@ -880,6 +880,58 @@ async retryHistoryEntryTranscription(id: number) : Promise<Result<null, string>>
     else return { status: "error", error: e  as any };
 }
 },
+async updateHistoryLimit(limit: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_history_limit", { limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_recording_retention_period", { period }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * List the models an endpoint offers.
+ * 
+ * This doubles as the key check in onboarding and settings: a wrong key answers
+ * 401 here, which costs nothing, instead of failing the user's first dictation.
+ */
+async listTranscriptionApiModels(baseUrl: string, apiKey: string) : Promise<Result<string[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_transcription_api_models", { baseUrl, apiKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Finish onboarding with the Transcription API instead of a downloaded model.
+ * 
+ * The regular `select_model` path cannot do this: it requires a model that is
+ * already on disk, which is exactly what this flow avoids.
+ */
+async completeOnboardingWithTranscriptionApi(baseUrl: string, apiKey: string, model: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("complete_onboarding_with_transcription_api", { baseUrl, apiKey, model }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Turn the Transcription API on or off.
+ * 
+ * Enabling it unloads the Local Engine straight away: not spending its
+ * 1-3 GB of RAM is the point of the feature, and waiting for the idle
+ * unload timeout would leave that memory held for nothing. Disabling it
+ * puts the local model back on its normal load path.
+ */
 async changeTranscriptionApiEnabledSetting(enabled: boolean) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_transcription_api_enabled_setting", { enabled }) };
@@ -920,43 +972,9 @@ async changeTranscriptionApiLocalFallbackSetting(enabled: boolean) : Promise<Res
     else return { status: "error", error: e  as any };
 }
 },
-async listTranscriptionApiModels(baseUrl: string, apiKey: string) : Promise<Result<string[], string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("list_transcription_api_models", { baseUrl, apiKey }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async completeOnboardingWithTranscriptionApi(baseUrl: string, apiKey: string, model: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("complete_onboarding_with_transcription_api", { baseUrl, apiKey, model }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async updateHistoryLimit(limit: number) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("update_history_limit", { limit }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("update_recording_retention_period", { period }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 /**
- * Checks if the Mac is a laptop by detecting battery presence
- * 
- * This uses pmset to check for battery information.
- * Returns true if a battery is detected (laptop), false otherwise (desktop)
+ * Stub implementation for non-macOS platforms
+ * Always returns false since laptop detection is macOS-specific
  */
 async isLaptop() : Promise<Result<boolean, string>> {
     try {
@@ -1017,7 +1035,20 @@ whats_new_last_seen_version?: string; selected_model?: string; onboarding_comple
  * Which input channel to use on the selected microphone device.
  * None means "average all channels" (original behavior).
  */
-selected_channel?: number | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: SecretMap; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; transcription_api_enabled?: boolean; transcription_api_base_url?: string; transcription_api_key?: string; transcription_api_model?: string; transcription_api_local_fallback?: boolean; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; paste_delay_after_ms?: number; 
+selected_channel?: number | null; clamshell_microphone?: string | null; selected_output_device?: string | null; translate_to_english?: boolean; selected_language?: string; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: SecretMap; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; 
+/**
+ * Transcription API: send recorded audio to an OpenAI-compatible
+ * `/audio/transcriptions` endpoint instead of running a Local Engine.
+ * Off by default — see docs/adr/0001-opt-in-transcription-api.md.
+ */
+transcription_api_enabled?: boolean; transcription_api_base_url?: string; transcription_api_key?: SecretString; transcription_api_model?: string; 
+/**
+ * Fall back to the Local Engine when the Transcription API fails. Off by
+ * default: a user who enabled the API usually did so because the Local
+ * Engine is too slow on their machine, so a silent fallback would hand
+ * them the exact stall they were avoiding.
+ */
+transcription_api_local_fallback?: boolean; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; keyboard_implementation?: KeyboardImplementation; show_tray_icon?: boolean; paste_delay_ms?: number; paste_delay_after_ms?: number; 
 /**
  * Debug-gated ("beta") receipt-sequenced paste: restore the clipboard only
  * after the target app actually reads the transcript, instead of after a
@@ -1114,6 +1145,13 @@ export type PermissionAccess = "allowed" | "denied" | "unknown"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean }
 export type RecordingRetentionPeriod = "never" | "preserve_limit" | "days_3" | "weeks_2" | "months_3"
 export type SecretMap = Partial<{ [key in string]: string }>
+/**
+ * A single secret value. Behaves like a `String` everywhere except `Debug`,
+ * where it redacts itself so keys cannot reach the logs. Like [`SecretMap`],
+ * this is a logging guard only — the value is stored in plain text in
+ * `settings_store.json`, exactly as the post-processing keys always have been.
+ */
+export type SecretString = string
 export type SecureInputStatus = { 
 /**
  * Secure input is currently enabled (live check)
