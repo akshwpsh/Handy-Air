@@ -1203,14 +1203,30 @@ impl TranscriptionManager {
                 match crate::transcription_api::transcribe(&settings, &audio) {
                     Ok(text) => {
                         // Text Filtering runs for API results exactly as it does
-                        // for local ones. Custom words already went to the
-                        // endpoint as a prompt, so fuzzy correction is skipped
-                        // here for the same reason it is skipped for whisper.
+                        // for local ones, which means handing it the same
+                        // language evidence rather than making its text detector
+                        // re-guess something we already know.
+                        let output_language = if settings.translate_to_english {
+                            // The translations endpoint only ever emits English.
+                            OutputLanguageEvidence::TranslatedToEnglish
+                        } else {
+                            match settings.selected_language.trim() {
+                                "" | "auto" => OutputLanguageEvidence::Unknown,
+                                selected => {
+                                    OutputLanguageEvidence::UserSelected(selected.to_string())
+                                }
+                            }
+                        };
+                        // Custom words went to the endpoint as a prompt, so fuzzy
+                        // correction is skipped for the same reason it is skipped
+                        // for whisper — but only when every word actually fit.
+                        let custom_words_already_prompted =
+                            crate::transcription_api::custom_words_fully_prompted(&settings);
                         let filtered = post_process_transcription_text(
                             text,
                             &settings,
-                            true,
-                            &OutputLanguageEvidence::Unknown,
+                            custom_words_already_prompted,
+                            &output_language,
                             &[],
                         );
                         info!(
@@ -1237,12 +1253,19 @@ impl TranscriptionManager {
                                     api_error
                                 ));
                             }
-                            if let Err(load_error) = self.load_model(&settings.selected_model) {
-                                return Err(anyhow::anyhow!(
-                                    "{} (local fallback failed to load a model: {})",
-                                    api_error,
-                                    load_error
-                                ));
+                            // Load under the shared guard. Loading behind it
+                            // would let a concurrent dictation start a second
+                            // load of the same model and double peak memory.
+                            // When the guard is unavailable a load is already
+                            // running, and the block below waits for it.
+                            if let Some(_loading) = self.try_start_loading() {
+                                if let Err(load_error) = self.load_model(&settings.selected_model) {
+                                    return Err(anyhow::anyhow!(
+                                        "{} (local fallback failed to load a model: {})",
+                                        api_error,
+                                        load_error
+                                    ));
+                                }
                             }
                         }
                     }

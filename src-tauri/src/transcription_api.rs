@@ -101,8 +101,11 @@ impl ApiRequest {
         fields
     }
 
-    fn multipart_form(&self, wav: Vec<u8>) -> Result<reqwest::multipart::Form, String> {
-        let part = reqwest::multipart::Part::bytes(wav)
+    fn multipart_form(&self, wav: bytes::Bytes) -> Result<reqwest::multipart::Form, String> {
+        // Known length, so this is a normal Content-Length body, not chunked —
+        // some endpoints reject chunked uploads.
+        let length = wav.len() as u64;
+        let part = reqwest::multipart::Part::stream_with_length(wav, length)
             .file_name("audio.wav")
             .mime_str("audio/wav")
             .map_err(|e| format!("Failed to build the audio upload: {}", e))?;
@@ -140,19 +143,31 @@ pub fn local_fallback_enabled(settings: &AppSettings) -> bool {
     settings.transcription_api_local_fallback
 }
 
+/// The `prompt` hint built from the user's custom words, plus whether any word
+/// had to be left out to stay inside the endpoint's token budget.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct PromptHint {
+    text: Option<String>,
+    /// Words the budget could not fit. They never reached the endpoint, so the
+    /// local fuzzy correction still has to handle them.
+    dropped: usize,
+}
+
 /// Join the user's custom words into a `prompt` hint, bounded to the endpoint's
 /// token budget. Truncation drops whole words, never half of one.
-fn custom_words_prompt(custom_words: &[String]) -> Option<String> {
+fn custom_words_hint(custom_words: &[String]) -> PromptHint {
     let words: Vec<&str> = custom_words
         .iter()
         .map(|word| word.trim())
         .filter(|word| !word.is_empty())
         .collect();
     if words.is_empty() {
-        return None;
+        return PromptHint::default();
     }
 
+    let total = words.len();
     let mut prompt = String::new();
+    let mut included = 0;
     for word in words {
         let separator = if prompt.is_empty() { "" } else { ", " };
         if prompt.chars().count() + separator.chars().count() + word.chars().count()
@@ -162,13 +177,27 @@ fn custom_words_prompt(custom_words: &[String]) -> Option<String> {
         }
         prompt.push_str(separator);
         prompt.push_str(word);
+        included += 1;
     }
 
-    if prompt.is_empty() {
-        None
-    } else {
-        Some(prompt)
+    PromptHint {
+        text: if prompt.is_empty() {
+            None
+        } else {
+            Some(prompt)
+        },
+        dropped: total - included,
     }
+}
+
+/// Whether every custom word the user configured reached the endpoint as part of
+/// the `prompt`.
+///
+/// Callers use this to decide whether local fuzzy correction can be skipped. It
+/// can only be skipped when nothing was dropped — otherwise the words past the
+/// budget would get neither the endpoint hint nor the local correction.
+pub fn custom_words_fully_prompted(settings: &AppSettings) -> bool {
+    custom_words_hint(&settings.custom_words).dropped == 0
 }
 
 /// Resolve a request from settings, or explain what is still missing.
@@ -201,7 +230,7 @@ pub fn request_from_settings(settings: &AppSettings) -> Result<ApiRequest, Strin
         base_url,
         model,
         language,
-        prompt: custom_words_prompt(&settings.custom_words),
+        prompt: custom_words_hint(&settings.custom_words).text,
         translate: settings.translate_to_english,
         api_key,
     })
@@ -262,19 +291,21 @@ pub fn encode_wav(samples: &[f32]) -> Result<Vec<u8>, String> {
 /// Tauri's runtime, so this is always driven from a thread of our own (see
 /// [`run_blocking`]) — never by blocking on the caller's runtime thread.
 fn runtime() -> Result<&'static tokio::runtime::Runtime, String> {
-    static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+    // Built inside `get_or_init` on purpose. Building it first and handing the
+    // value over would make the loser of a concurrent first call drop a live
+    // runtime, and `Runtime::drop` blocks until its worker threads have shut
+    // down — a stall on whichever thread is trying to transcribe.
+    static RUNTIME: OnceLock<std::io::Result<tokio::runtime::Runtime>> = OnceLock::new();
 
-    if let Some(runtime) = RUNTIME.get() {
-        return Ok(runtime);
-    }
-
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(1)
-        .enable_all()
-        .build()
-        .map_err(|e| format!("Failed to start the Transcription API runtime: {}", e))?;
-
-    Ok(RUNTIME.get_or_init(|| runtime))
+    RUNTIME
+        .get_or_init(|| {
+            tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(1)
+                .enable_all()
+                .build()
+        })
+        .as_ref()
+        .map_err(|e| format!("Failed to start the Transcription API runtime: {}", e))
 }
 
 /// Drive an async call to completion from synchronous code.
@@ -347,6 +378,10 @@ async fn send(request: ApiRequest, wav: Vec<u8>) -> Result<String, String> {
         .build()
         .map_err(|e| report_reqwest_error("Failed to build the Transcription API client", &e))?;
 
+    // Refcounted so the retry re-sends the same buffer instead of cloning it.
+    // At the 25 MB cap a plain clone would double peak memory on every attempt.
+    let wav = bytes::Bytes::from(wav);
+
     let mut attempt = 0;
     loop {
         attempt += 1;
@@ -384,8 +419,10 @@ async fn send(request: ApiRequest, wav: Vec<u8>) -> Result<String, String> {
                 return Err(describe_status_error(status, &body));
             }
             Err(error) => {
-                let transport_fault =
-                    error.is_timeout() || error.is_connect() || error.is_request();
+                // `is_request` also covers request-construction failures such
+                // as a malformed URL, which answer identically forever — only
+                // timeouts and connect failures are worth a second attempt.
+                let transport_fault = error.is_timeout() || error.is_connect();
                 let details = report_reqwest_error("Transcription API request failed", &error);
                 if transport_fault && attempt == 1 {
                     warn!("Transcription API transport failure — retrying once");
@@ -552,13 +589,13 @@ mod tests {
 
     #[test]
     fn custom_words_become_a_prompt() {
-        assert_eq!(custom_words_prompt(&[]), None);
+        assert_eq!(custom_words_hint(&[]).text, None);
         assert_eq!(
-            custom_words_prompt(&["  ".to_string(), "".to_string()]),
+            custom_words_hint(&["  ".to_string(), "".to_string()]).text,
             None
         );
         assert_eq!(
-            custom_words_prompt(&["Handy".to_string(), " Groq ".to_string()]),
+            custom_words_hint(&["Handy".to_string(), " Groq ".to_string()]).text,
             Some("Handy, Groq".to_string())
         );
     }
@@ -566,12 +603,32 @@ mod tests {
     #[test]
     fn an_overlong_word_list_is_truncated_between_words() {
         let words: Vec<String> = (0..500).map(|i| format!("word{}", i)).collect();
-        let prompt = custom_words_prompt(&words).unwrap();
+        let hint = custom_words_hint(&words);
+        let prompt = hint.text.unwrap();
 
         assert!(prompt.chars().count() <= MAX_PROMPT_CHARS);
         // Truncation drops whole words, so the tail is never a partial one.
         assert!(prompt.split(", ").all(|word| word.starts_with("word")));
         assert!(prompt.starts_with("word0, word1, "));
+        assert!(hint.dropped > 0);
+    }
+
+    #[test]
+    fn dropped_custom_words_keep_their_claim_on_local_correction() {
+        let mut settings = get_default_settings();
+        settings.transcription_api_key = "key".to_string().into();
+
+        // Nothing configured, and a short list that fits: the endpoint has seen
+        // everything, so local fuzzy correction can be skipped.
+        assert!(custom_words_fully_prompted(&settings));
+        settings.custom_words = vec!["Handy".to_string(), "Groq".to_string()];
+        assert!(custom_words_fully_prompted(&settings));
+        assert_eq!(custom_words_hint(&settings.custom_words).dropped, 0);
+
+        // A list too long for the prompt budget: the words past the cut never
+        // reached the endpoint, so correction must still run for them.
+        settings.custom_words = (0..500).map(|i| format!("word{}", i)).collect();
+        assert!(!custom_words_fully_prompted(&settings));
     }
 
     #[test]
@@ -613,6 +670,18 @@ mod tests {
         settings.transcription_api_key = String::new().into();
         settings.transcription_api_base_url = "https://example.test/v1".to_string();
         assert_eq!(settings.resolved_transcription_api_key(), "");
+    }
+
+    #[test]
+    fn the_runtime_is_shared_and_usable_from_a_plain_thread() {
+        // Built once, inside get_or_init, so a concurrent first call never has
+        // to drop a live runtime on the calling thread.
+        let address = |runtime: &'static tokio::runtime::Runtime| runtime as *const _ as usize;
+        let first = address(runtime().unwrap());
+        let second = std::thread::spawn(move || address(runtime().unwrap()))
+            .join()
+            .unwrap();
+        assert_eq!(first, second);
     }
 
     #[test]

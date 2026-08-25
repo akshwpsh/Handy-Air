@@ -60,6 +60,8 @@ earshot = "1.2.2"
 enigo = "0.6.1"
 rodio = { git = "https://github.com/cjpais/rodio.git" }
 reqwest = { version = "0.12", features = ["json", "stream", "gzip", "brotli", "deflate", "multipart"] }
+# Refcounted upload bodies for the Transcription API multipart request.
+bytes = "1"
 futures-util = "0.3"
 rustfft = "6.4.0"
 strsim = "0.11.0"

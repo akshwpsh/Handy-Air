@@ -731,6 +731,11 @@ pub fn run(cli_args: CliArgs) {
             commands::history::update_recording_retention_period,
             commands::transcription_api::list_transcription_api_models,
             commands::transcription_api::complete_onboarding_with_transcription_api,
+            commands::transcription_api::change_transcription_api_enabled_setting,
+            commands::transcription_api::change_transcription_api_base_url_setting,
+            commands::transcription_api::change_transcription_api_key_setting,
+            commands::transcription_api::change_transcription_api_model_setting,
+            commands::transcription_api::change_transcription_api_local_fallback_setting,
             helpers::clamshell::is_laptop,
         ])
         .events(collect_events![

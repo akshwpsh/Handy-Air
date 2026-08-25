@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Cloud } from "lucide-react";
 
 import { commands } from "@/bindings";
+import { useSettings } from "@/hooks/useSettings";
 
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1";
 const DEFAULT_MODEL = "whisper-large-v3-turbo";
@@ -26,6 +27,7 @@ export const CloudSetupCard: React.FC<CloudSetupCardProps> = ({
   disabled = false,
 }) => {
   const { t } = useTranslation();
+  const { refreshSettings } = useSettings();
 
   const [expanded, setExpanded] = useState(false);
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
@@ -69,6 +71,10 @@ export const CloudSetupCard: React.FC<CloudSetupCardProps> = ({
         model,
       );
       if (result.status === "ok") {
+        // The backend wrote the settings directly, so the store still holds the
+        // pre-onboarding values. Without this the Settings panel would show the
+        // Transcription API as off while the app is actually using it.
+        await refreshSettings();
         onDone();
       } else {
         setError(result.error);

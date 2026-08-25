@@ -147,6 +147,16 @@ const settingUpdaters: {
   auto_submit_key: (value) =>
     commands.changeAutoSubmitKeySetting(value as string),
   history_limit: (value) => commands.updateHistoryLimit(value as number),
+  transcription_api_enabled: (value) =>
+    commands.changeTranscriptionApiEnabledSetting(value as boolean),
+  transcription_api_base_url: (value) =>
+    commands.changeTranscriptionApiBaseUrlSetting(value as string),
+  transcription_api_key: (value) =>
+    commands.changeTranscriptionApiKeySetting(value as string),
+  transcription_api_model: (value) =>
+    commands.changeTranscriptionApiModelSetting(value as string),
+  transcription_api_local_fallback: (value) =>
+    commands.changeTranscriptionApiLocalFallbackSetting(value as boolean),
   post_process_enabled: (value) =>
     commands.changePostProcessEnabledSetting(value as boolean),
   post_process_selected_prompt_id: (value) =>
