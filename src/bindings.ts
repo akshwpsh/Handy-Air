@@ -1053,6 +1053,12 @@ selected_channel?: number | null; clamshell_microphone?: string | null; selected
  */
 post_process_temperature?: number | null; 
 /**
+ * Built-in prompts already added to `post_process_prompts` once. A built-in
+ * prompt missing from that list is added only if its id is not here, so
+ * one the user deleted stays deleted.
+ */
+post_process_seeded_prompt_ids?: string[]; 
+/**
  * Transcription API: send recorded audio to an OpenAI-compatible
  * `/audio/transcriptions` endpoint instead of running a Local Engine.
  * Off by default — see docs/adr/0001-opt-in-transcription-api.md.
