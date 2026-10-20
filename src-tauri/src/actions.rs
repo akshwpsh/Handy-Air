@@ -1088,10 +1088,11 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
 mod tests {
     use super::{
         complete_unless_cancelled, is_blank_transcription, post_process_failure_reason,
-        processed_or_failed, should_use_streaming_overlay, strip_think_block, PostProcessOutcome,
-        MAX_FAILURE_REASON_CHARS,
+        post_process_transcription, processed_or_failed, should_use_streaming_overlay,
+        strip_think_block, PostProcessOutcome, MAX_FAILURE_REASON_CHARS,
     };
-    use crate::settings::OverlayStyle;
+    use crate::llm_client::test_server::{completion, serve};
+    use crate::settings::{AppSettings, OverlayStyle};
     use std::future;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
@@ -1242,6 +1243,66 @@ mod tests {
         assert_eq!(
             processed_or_failed("Cleaned text.".to_string()),
             PostProcessOutcome::Processed("Cleaned text.".to_string())
+        );
+    }
+
+    /// Settings that send post-processing to `base_url` via the custom provider.
+    fn settings_for(base_url: &str, structured_output: bool) -> AppSettings {
+        let mut settings = crate::settings::get_default_settings();
+        let provider = settings
+            .post_process_provider_mut("custom")
+            .expect("default settings include the custom provider");
+        provider.base_url = base_url.to_string();
+        provider.supports_structured_output = structured_output;
+        settings.post_process_provider_id = "custom".to_string();
+        settings
+            .post_process_models
+            .insert("custom".to_string(), "test-model".to_string());
+        settings.post_process_selected_prompt_id =
+            Some(settings.post_process_prompts[0].id.clone());
+        settings
+    }
+
+    async fn post_process_against(
+        answer: &'static str,
+        structured_output: bool,
+    ) -> PostProcessOutcome {
+        let server = serve(move |_| ("200 OK", completion(answer))).await;
+        let settings = settings_for(&server.base_url, structured_output);
+        post_process_transcription(&settings, "와 지리는데?").await
+    }
+
+    #[tokio::test]
+    async fn an_empty_model_answer_falls_back_to_the_transcription() {
+        // Groq's qwen/qwen3.8-27b really answered "와 지리는데?" with empty
+        // content; pasting that would have pasted nothing at all.
+        for (answer, structured_output) in [
+            ("", false),
+            ("  \n ", false),
+            ("<think>hmm</think>", false),
+            (r#"{"transcription": ""}"#, true),
+            (r#"{"transcription": "  "}"#, true),
+            ("", true),
+        ] {
+            assert!(
+                matches!(
+                    post_process_against(answer, structured_output).await,
+                    PostProcessOutcome::Failed(_)
+                ),
+                "answer {answer:?} (structured: {structured_output}) must count as a failure"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn a_real_model_answer_is_used() {
+        assert_eq!(
+            post_process_against("와, 지리는데?", false).await,
+            PostProcessOutcome::Processed("와, 지리는데?".to_string())
+        );
+        assert_eq!(
+            post_process_against(r#"{"transcription": "와, 지리는데?"}"#, true).await,
+            PostProcessOutcome::Processed("와, 지리는데?".to_string())
         );
     }
 }

@@ -586,6 +586,91 @@ pub async fn fetch_models(
     Ok(models)
 }
 
+/// A local stand-in for an OpenAI-compatible endpoint, for tests that need a
+/// real HTTP round trip. Each request's JSON body is recorded, and `respond`
+/// picks the status line and body sent back for it.
+#[cfg(test)]
+pub(crate) mod test_server {
+    use serde_json::Value;
+    use std::sync::{Arc, Mutex};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
+
+    pub(crate) struct TestServer {
+        pub(crate) base_url: String,
+        pub(crate) requests: Arc<Mutex<Vec<Value>>>,
+    }
+
+    impl TestServer {
+        pub(crate) fn requests(&self) -> Vec<Value> {
+            self.requests.lock().unwrap().clone()
+        }
+    }
+
+    /// A successful chat completion whose answer is `content`.
+    pub(crate) fn completion(content: &str) -> String {
+        serde_json::json!({
+            "choices": [{ "message": { "content": content }, "finish_reason": "stop" }]
+        })
+        .to_string()
+    }
+
+    pub(crate) async fn serve<F>(respond: F) -> TestServer
+    where
+        F: Fn(&Value) -> (&'static str, String) + Send + Sync + 'static,
+    {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base_url = format!("http://{}", listener.local_addr().unwrap());
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let recorded = Arc::clone(&requests);
+
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                let body = read_request_body(&mut stream).await;
+                let json: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+                let (status, reply) = respond(&json);
+                recorded.lock().unwrap().push(json);
+                let response = format!(
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{reply}",
+                    reply.len()
+                );
+                let _ = stream.write_all(response.as_bytes()).await;
+                let _ = stream.shutdown().await;
+            }
+        });
+
+        TestServer { base_url, requests }
+    }
+
+    /// Read the whole request, so the client is never cut off mid-upload.
+    async fn read_request_body(stream: &mut TcpStream) -> Vec<u8> {
+        let mut buf = Vec::new();
+        let mut chunk = [0_u8; 4096];
+        let header_end = loop {
+            if let Some(end) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                break end + 4;
+            }
+            match stream.read(&mut chunk).await {
+                Ok(0) | Err(_) => return Vec::new(),
+                Ok(n) => buf.extend_from_slice(&chunk[..n]),
+            }
+        };
+        let headers = String::from_utf8_lossy(&buf[..header_end]).to_lowercase();
+        let length = headers
+            .lines()
+            .find_map(|line| line.strip_prefix("content-length:"))
+            .and_then(|value| value.trim().parse::<usize>().ok())
+            .unwrap_or(0);
+        while buf.len() < header_end + length {
+            match stream.read(&mut chunk).await {
+                Ok(0) | Err(_) => break,
+                Ok(n) => buf.extend_from_slice(&chunk[..n]),
+            }
+        }
+        buf[header_end..buf.len().min(header_end + length)].to_vec()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
