@@ -727,7 +727,8 @@
   },
   "overlay": {
     "transcribing": "Transkribiere...",
-    "processing": "Verarbeite..."
+    "processing": "Verarbeite...",
+    "postProcessFailed": "Nachbearbeitung fehlgeschlagen"
   },
   "whatsNew": {
     "title": "Neu in Handy v{{version}}"

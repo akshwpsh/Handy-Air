@@ -727,7 +727,8 @@
   },
   "overlay": {
     "transcribing": "מתמלל...",
-    "processing": "מעבד..."
+    "processing": "מעבד...",
+    "postProcessFailed": "העיבוד המשלים נכשל"
   },
   "whatsNew": {
     "title": "חדש ב-Handy v{{version}}"

@@ -727,7 +727,8 @@
   },
   "overlay": {
     "transcribing": "Transkribe ediliyor...",
-    "processing": "İşleniyor..."
+    "processing": "İşleniyor...",
+    "postProcessFailed": "Son işlem başarısız"
   },
   "whatsNew": {
     "title": "Handy v{{version}} yenilikleri"

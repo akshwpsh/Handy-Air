@@ -727,7 +727,8 @@
   },
   "overlay": {
     "transcribing": "Đang chuyển đổi...",
-    "processing": "Đang xử lý..."
+    "processing": "Đang xử lý...",
+    "postProcessFailed": "Xử lý sau thất bại"
   },
   "whatsNew": {
     "title": "Điểm mới trong Handy v{{version}}"

@@ -50,12 +50,23 @@ const OVERLAY_HEIGHT: f64 = 46.0;
 const OVERLAY_STREAM_WIDTH: f64 = 400.0;
 const OVERLAY_STREAM_HEIGHT: f64 = 120.0;
 
+// Post-processing warning: a compact pill widened to --ov-warn-w (280) so the
+// longest translated label fits on one line.
+const OVERLAY_WARN_WIDTH: f64 = 300.0;
+
+/// Overlay state shown after the unpolished transcription was pasted because
+/// post-processing failed.
+const POST_PROCESS_FAILED_STATE: &str = "post_process_failed";
+
+/// How long the post-processing warning stays up before the overlay hides.
+const POST_PROCESS_WARNING_DURATION: std::time::Duration = std::time::Duration::from_secs(3);
+
 /// Overlay window size (logical) for a given UI state.
 fn overlay_dimensions(state: &str) -> (f64, f64) {
-    if state == "streaming" {
-        (OVERLAY_STREAM_WIDTH, OVERLAY_STREAM_HEIGHT)
-    } else {
-        (OVERLAY_WIDTH, OVERLAY_HEIGHT)
+    match state {
+        "streaming" => (OVERLAY_STREAM_WIDTH, OVERLAY_STREAM_HEIGHT),
+        POST_PROCESS_FAILED_STATE => (OVERLAY_WARN_WIDTH, OVERLAY_HEIGHT),
+        _ => (OVERLAY_WIDTH, OVERLAY_HEIGHT),
     }
 }
 
@@ -298,8 +309,11 @@ fn current_overlay_logical_size(window: &tauri::webview::WebviewWindow) -> Optio
     Some((size.width as f64 / scale, size.height as f64 / scale))
 }
 
+/// Logical size of the state the overlay last showed, so a position change
+/// re-places it at that size (compact, streaming or warning).
 #[cfg(target_os = "windows")]
-static WINDOWS_OVERLAY_IS_STREAMING: AtomicBool = AtomicBool::new(false);
+static WINDOWS_OVERLAY_SIZE: std::sync::Mutex<(f64, f64)> =
+    std::sync::Mutex::new((OVERLAY_WIDTH, OVERLAY_HEIGHT));
 
 /// Overlay rectangle in the destination monitor's physical pixels, so nothing
 /// is converted through the window's previous-monitor DPI.
@@ -531,7 +545,11 @@ fn show_overlay_state_on_main(app_handle: &AppHandle, state: &str) {
             let _ =
                 overlay_window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
             #[cfg(target_os = "windows")]
-            WINDOWS_OVERLAY_IS_STREAMING.store(state == "streaming", Ordering::Relaxed);
+            {
+                *WINDOWS_OVERLAY_SIZE
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = (width, height);
+            }
             let size_elapsed = size_started.elapsed();
 
             let pos_started = std::time::Instant::now();
@@ -623,6 +641,35 @@ pub fn show_processing_overlay(app_handle: &AppHandle) {
     show_overlay_state(app_handle, "processing");
 }
 
+/// Ends a transcription whose post-processing failed: the overlay warns that
+/// the unpolished text was pasted, then hides. Use it in place of
+/// `hide_recording_overlay`. The main window is usually hidden in the tray
+/// while dictating, so its toast alone goes unseen; the overlay is on screen.
+pub fn show_post_process_failed_overlay(app_handle: &AppHandle) {
+    if settings::get_settings(app_handle).overlay_style == OverlayStyle::None {
+        hide_recording_overlay(app_handle);
+        return;
+    }
+
+    let handle = app_handle.clone();
+    let shown = app_handle.run_on_main_thread(move || {
+        show_overlay_state_on_main(&handle, POST_PROCESS_FAILED_STATE);
+        // Read after the show bumped it. A session that starts while the
+        // warning is up bumps it again, and its overlay is left alone.
+        let shown_at = OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst);
+        std::thread::spawn(move || {
+            std::thread::sleep(POST_PROCESS_WARNING_DURATION);
+            if OVERLAY_SHOW_GENERATION.load(Ordering::SeqCst) == shown_at {
+                hide_recording_overlay(&handle);
+            }
+        });
+    });
+    if let Err(error) = shown {
+        log::error!("Failed to show the post-processing warning overlay: {error}");
+        hide_recording_overlay(app_handle);
+    }
+}
+
 /// Updates the overlay window position based on current settings
 pub fn update_overlay_position(app_handle: &AppHandle) {
     // Positioning queries monitors/cursor (GDK/Xlib on Linux) and moves the
@@ -645,12 +692,9 @@ fn update_overlay_position_on_main(app_handle: &AppHandle) {
 
         #[cfg(target_os = "windows")]
         {
-            let state = if WINDOWS_OVERLAY_IS_STREAMING.load(Ordering::Relaxed) {
-                "streaming"
-            } else {
-                "recording"
-            };
-            let (width, height) = overlay_dimensions(state);
+            let (width, height) = *WINDOWS_OVERLAY_SIZE
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             if let Err(error) = place_windows_overlay(app_handle, &overlay_window, width, height) {
                 log::error!("Failed to update recording overlay position: {error}");
             }

@@ -727,7 +727,8 @@
   },
   "overlay": {
     "transcribing": "텍스트로 변환 중...",
-    "processing": "처리 중..."
+    "processing": "처리 중...",
+    "postProcessFailed": "후처리 실패"
   },
   "whatsNew": {
     "title": "Handy v{{version}}의 새 소식"
