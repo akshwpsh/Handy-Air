@@ -118,17 +118,120 @@ fn should_use_streaming_overlay(style: OverlayStyle, is_streaming: bool) -> bool
     style == OverlayStyle::Live && is_streaming
 }
 
-async fn post_process_transcription(settings: &AppSettings, transcription: &str) -> Option<String> {
+/// What became of a post-processing request.
+#[derive(Debug, PartialEq)]
+enum PostProcessOutcome {
+    /// The model returned polished text.
+    Processed(String),
+    /// Not attempted: the transcription is blank, or the settings leave nothing
+    /// to run (no provider, model or prompt). The user chose that, so it is not
+    /// reported.
+    Skipped,
+    /// Attempted but nothing usable came back. Carries a short reason that is
+    /// safe to show the user.
+    Failed(String),
+}
+
+/// Longest failure reason shown to the user; the full error stays in handy.log.
+const MAX_FAILURE_REASON_CHARS: usize = 160;
+
+/// Blank out any copy of the API key or the transcription in an error message.
+/// A provider may echo the request back in its error body, and these messages
+/// end up in handy.log and in the UI.
+fn redact_post_process_error(error: &str, api_key: &str, transcription: &str) -> String {
+    let mut text = error.to_string();
+    for (secret, label) in [
+        (api_key.trim(), "[api key]"),
+        (transcription.trim(), "[transcription]"),
+    ] {
+        if secret.is_empty() {
+            continue;
+        }
+        text = text.replace(secret, label);
+        // An echo inside a JSON error body is escaped, so match that form too.
+        if let Ok(quoted) = serde_json::to_string(secret) {
+            let escaped = &quoted[1..quoted.len() - 1];
+            if escaped != secret {
+                text = text.replace(escaped, label);
+            }
+        }
+    }
+    text
+}
+
+/// Pull the error code and message out of an OpenAI-style error body,
+/// e.g. `{"error":{"message":"The model ... does not exist","code":"model_not_found"}}`.
+fn provider_error_fields(body: &str) -> (Option<String>, Option<String>) {
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(body.trim()) else {
+        return (None, None);
+    };
+    // Some OpenAI-compatible layers wrap the error object in an array.
+    let json = match json {
+        serde_json::Value::Array(items) => items.into_iter().next().unwrap_or_default(),
+        other => other,
+    };
+    let error = json.get("error").unwrap_or(&json);
+    if let Some(message) = error.as_str() {
+        return (None, Some(message.to_string()));
+    }
+    let field = |name: &str| error.get(name).and_then(|v| v.as_str()).map(str::to_string);
+    (field("code"), field("message"))
+}
+
+/// Turn a post-processing error into the short reason shown to the user.
+///
+/// HTTP failures arrive as `API request failed with status 404 Not Found: <body>`;
+/// the status and the provider's message say what to fix (a retired model, a bad
+/// key), so the wrapper text is dropped and the result is kept short.
+fn post_process_failure_reason(error: &str, api_key: &str, transcription: &str) -> String {
+    let error = redact_post_process_error(error, api_key, transcription);
+    let reason = match error
+        .strip_prefix("API request failed with status ")
+        .and_then(|rest| rest.split_once(": "))
+    {
+        Some((status, body)) => match provider_error_fields(body) {
+            (Some(code), Some(message)) => format!("{status} ({code}): {message}"),
+            (None, Some(message)) => format!("{status}: {message}"),
+            (Some(code), None) => format!("{status} ({code})"),
+            (None, None) => format!("{status}: {}", body.trim()),
+        },
+        None => error,
+    };
+    // Again after parsing: JSON `\u` escapes hide an echo from the first pass.
+    let reason = redact_post_process_error(&reason, api_key, transcription);
+    let reason = reason.trim();
+    if reason.chars().count() <= MAX_FAILURE_REASON_CHARS {
+        return reason.to_string();
+    }
+    let mut truncated: String = reason.chars().take(MAX_FAILURE_REASON_CHARS - 1).collect();
+    truncated.push('…');
+    truncated
+}
+
+/// An answer that is empty once cleaned up would paste nothing and lose the
+/// dictation, so it counts as a failure and the original text is used instead.
+fn processed_or_failed(text: String) -> PostProcessOutcome {
+    if text.trim().is_empty() {
+        PostProcessOutcome::Failed("the model returned an empty answer".to_string())
+    } else {
+        PostProcessOutcome::Processed(text)
+    }
+}
+
+async fn post_process_transcription(
+    settings: &AppSettings,
+    transcription: &str,
+) -> PostProcessOutcome {
     if is_blank_transcription(transcription) {
         debug!("Post-processing skipped because the transcription is empty");
-        return None;
+        return PostProcessOutcome::Skipped;
     }
 
     let provider = match settings.active_post_process_provider().cloned() {
         Some(provider) => provider,
         None => {
             debug!("Post-processing enabled but no provider is selected");
-            return None;
+            return PostProcessOutcome::Skipped;
         }
     };
 
@@ -143,14 +246,14 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
             "Post-processing skipped because provider '{}' has no model configured",
             provider.id
         );
-        return None;
+        return PostProcessOutcome::Skipped;
     }
 
     let selected_prompt_id = match &settings.post_process_selected_prompt_id {
         Some(id) => id.clone(),
         None => {
             debug!("Post-processing skipped because no prompt is selected");
-            return None;
+            return PostProcessOutcome::Skipped;
         }
     };
 
@@ -165,13 +268,13 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
                 "Post-processing skipped because prompt '{}' was not found",
                 selected_prompt_id
             );
-            return None;
+            return PostProcessOutcome::Skipped;
         }
     };
 
     if prompt.trim().is_empty() {
         debug!("Post-processing skipped because the selected prompt is empty");
-        return None;
+        return PostProcessOutcome::Skipped;
     }
 
     debug!(
@@ -204,7 +307,9 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
                     debug!(
                         "Apple Intelligence selected but not currently available on this device"
                     );
-                    return None;
+                    return PostProcessOutcome::Failed(
+                        "Apple Intelligence is not available on this device".to_string(),
+                    );
                 }
 
                 let token_limit = model.trim().parse::<i32>().unwrap_or(0);
@@ -216,19 +321,26 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
                     Ok(result) => {
                         if result.trim().is_empty() {
                             debug!("Apple Intelligence returned an empty response");
-                            None
+                            PostProcessOutcome::Failed(
+                                "Apple Intelligence returned an empty answer".to_string(),
+                            )
                         } else {
                             let result = strip_invisible_chars(&result);
                             debug!(
                                 "Apple Intelligence post-processing succeeded. Output length: {} chars",
                                 result.len()
                             );
-                            Some(result)
+                            processed_or_failed(result)
                         }
                     }
                     Err(err) => {
+                        let err = redact_post_process_error(&err, "", transcription);
                         error!("Apple Intelligence post-processing failed: {}", err);
-                        None
+                        PostProcessOutcome::Failed(post_process_failure_reason(
+                            &err,
+                            "",
+                            transcription,
+                        ))
                     }
                 };
             }
@@ -236,7 +348,9 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
             #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
             {
                 debug!("Apple Intelligence provider selected on unsupported platform");
-                return None;
+                return PostProcessOutcome::Failed(
+                    "Apple Intelligence is not supported on this platform".to_string(),
+                );
             }
         }
 
@@ -278,10 +392,10 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
                                 provider.id,
                                 result.len()
                             );
-                            return Some(result);
+                            return processed_or_failed(result);
                         } else {
                             error!("Structured output response missing 'transcription' field");
-                            return Some(strip_invisible_chars(content));
+                            return processed_or_failed(strip_invisible_chars(content));
                         }
                     }
                     Err(e) => {
@@ -289,18 +403,19 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
                             "Failed to parse structured output JSON: {}. Returning raw content.",
                             e
                         );
-                        return Some(strip_invisible_chars(content));
+                        return processed_or_failed(strip_invisible_chars(content));
                     }
                 }
             }
             Ok(None) => {
                 error!("LLM API response has no content");
-                return None;
+                return PostProcessOutcome::Failed("the model returned no content".to_string());
             }
             Err(e) => {
                 warn!(
                     "Structured output failed for provider '{}': {}. Falling back to legacy mode.",
-                    provider.id, e
+                    provider.id,
+                    redact_post_process_error(&e, &api_key, transcription)
                 );
                 // Fall through to legacy mode below
             }
@@ -313,7 +428,7 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
 
     match crate::llm_client::send_chat_completion(
         &provider,
-        api_key,
+        api_key.clone(),
         &model,
         processed_prompt,
         disable_reasoning,
@@ -327,19 +442,19 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
                 provider.id,
                 content.len()
             );
-            Some(content)
+            processed_or_failed(content)
         }
         Ok(None) => {
             error!("LLM API response has no content");
-            None
+            PostProcessOutcome::Failed("the model returned no content".to_string())
         }
         Err(e) => {
             error!(
                 "LLM post-processing failed for provider '{}': {}. Falling back to original transcription.",
                 provider.id,
-                e
+                redact_post_process_error(&e, &api_key, transcription)
             );
-            None
+            PostProcessOutcome::Failed(post_process_failure_reason(&e, &api_key, transcription))
         }
     }
 }
@@ -396,6 +511,9 @@ pub(crate) struct ProcessedTranscription {
     pub final_text: String,
     pub post_processed_text: Option<String>,
     pub post_process_prompt: Option<String>,
+    /// Set when post-processing was attempted and failed; `final_text` is then
+    /// the unpolished transcription. A short reason, safe to show the user.
+    pub post_process_error: Option<String>,
 }
 
 /// Resolve the persisted language *intent* into the language the currently-loaded
@@ -428,6 +546,7 @@ pub(crate) async fn process_transcription_output(
     let mut final_text = transcription.to_string();
     let mut post_processed_text: Option<String> = None;
     let mut post_process_prompt: Option<String> = None;
+    let mut post_process_error: Option<String> = None;
 
     // Resolve the language the transcription actually ran in (the persisted
     // intent coerced against the loaded model's capabilities) so OpenCC keys off
@@ -440,19 +559,23 @@ pub(crate) async fn process_transcription_output(
     }
 
     if post_process {
-        if let Some(processed_text) = post_process_transcription(&settings, &final_text).await {
-            post_processed_text = Some(processed_text.clone());
-            final_text = processed_text;
+        match post_process_transcription(&settings, &final_text).await {
+            PostProcessOutcome::Processed(processed_text) => {
+                post_processed_text = Some(processed_text.clone());
+                final_text = processed_text;
 
-            if let Some(prompt_id) = &settings.post_process_selected_prompt_id {
-                if let Some(prompt) = settings
-                    .post_process_prompts
-                    .iter()
-                    .find(|prompt| &prompt.id == prompt_id)
-                {
-                    post_process_prompt = Some(prompt.prompt.clone());
+                if let Some(prompt_id) = &settings.post_process_selected_prompt_id {
+                    if let Some(prompt) = settings
+                        .post_process_prompts
+                        .iter()
+                        .find(|prompt| &prompt.id == prompt_id)
+                    {
+                        post_process_prompt = Some(prompt.prompt.clone());
+                    }
                 }
             }
+            PostProcessOutcome::Skipped => {}
+            PostProcessOutcome::Failed(reason) => post_process_error = Some(reason),
         }
     } else if final_text != transcription {
         post_processed_text = Some(final_text.clone());
@@ -462,6 +585,7 @@ pub(crate) async fn process_transcription_output(
         final_text,
         post_processed_text,
         post_process_prompt,
+        post_process_error,
     }
 }
 
@@ -816,6 +940,7 @@ impl ShortcutAction for TranscribeAction {
                                 let ah_clone = ah.clone();
                                 let paste_time = Instant::now();
                                 let final_text = processed.final_text;
+                                let post_process_error = processed.post_process_error;
                                 let rm_for_paste = Arc::clone(&rm);
                                 ah.run_on_main_thread(move || {
                                     if rm_for_paste.was_cancelled_since(cancel_generation) {
@@ -826,10 +951,17 @@ impl ShortcutAction for TranscribeAction {
                                     }
 
                                     match utils::paste(final_text, ah_clone.clone()) {
-                                        Ok(()) => debug!(
-                                            "Text pasted successfully in {:?}",
-                                            paste_time.elapsed()
-                                        ),
+                                        Ok(()) => {
+                                            debug!(
+                                                "Text pasted successfully in {:?}",
+                                                paste_time.elapsed()
+                                            );
+                                            // The unpolished text went in. Say so, or a
+                                            // retired model or bad key goes unnoticed.
+                                            if let Some(reason) = post_process_error {
+                                                let _ = ah_clone.emit("post-process-error", reason);
+                                            }
+                                        }
                                         Err(e) => {
                                             error!("Failed to paste transcription: {}", e);
                                             let _ = ah_clone.emit("paste-error", ());
@@ -955,8 +1087,9 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
 #[cfg(test)]
 mod tests {
     use super::{
-        complete_unless_cancelled, is_blank_transcription, should_use_streaming_overlay,
-        strip_think_block,
+        complete_unless_cancelled, is_blank_transcription, post_process_failure_reason,
+        processed_or_failed, should_use_streaming_overlay, strip_think_block, PostProcessOutcome,
+        MAX_FAILURE_REASON_CHARS,
     };
     use crate::settings::OverlayStyle;
     use std::future;
@@ -1038,5 +1171,77 @@ mod tests {
         assert!(!should_use_streaming_overlay(OverlayStyle::Live, false));
         assert!(!should_use_streaming_overlay(OverlayStyle::Minimal, true));
         assert!(!should_use_streaming_overlay(OverlayStyle::None, true));
+    }
+
+    #[test]
+    fn a_retired_model_is_reported_by_status_code_and_message() {
+        // The error Groq returned for weeks after retiring qwen/qwen3.6-27b.
+        let error = r#"API request failed with status 404 Not Found: {"error":{"message":"The model `qwen/qwen3.6-27b` does not exist or you do not have access to it.","type":"invalid_request_error","code":"model_not_found"}}"#;
+        assert_eq!(
+            post_process_failure_reason(error, "gsk_test", "hello there"),
+            "404 Not Found (model_not_found): The model `qwen/qwen3.6-27b` does not exist or you do not have access to it."
+        );
+    }
+
+    #[test]
+    fn errors_without_a_json_body_are_passed_through() {
+        assert_eq!(
+            post_process_failure_reason(
+                "API request failed with status 502 Bad Gateway: upstream timed out",
+                "",
+                "hello there"
+            ),
+            "502 Bad Gateway: upstream timed out"
+        );
+        assert_eq!(
+            post_process_failure_reason(
+                "the model ran out of completion tokens and its answer was cut off",
+                "",
+                "hello there"
+            ),
+            "the model ran out of completion tokens and its answer was cut off"
+        );
+    }
+
+    #[test]
+    fn the_api_key_and_transcription_never_reach_the_reason() {
+        let key = "gsk_SECRETKEY123";
+        let transcription = "my private \"dictation\"";
+        // Echoed raw, and echoed inside a JSON string (escaped, then \u-escaped).
+        let raw = format!("Invalid API key {key} for input {transcription}");
+        let json = format!(
+            r#"API request failed with status 400 Bad Request: {{"error":{{"message":"Bad input: my private \"dictation\" / {key}"}}}}"#
+        );
+        let unicode = r#"API request failed with status 400 Bad Request: {"error":{"message":"Bad input: my private \"dictation\""}}"#;
+
+        for error in [raw.as_str(), json.as_str(), unicode] {
+            let reason = post_process_failure_reason(error, key, transcription);
+            assert!(!reason.contains(key), "{reason}");
+            assert!(!reason.contains("private"), "{reason}");
+        }
+    }
+
+    #[test]
+    fn long_reasons_are_truncated() {
+        let error = format!(
+            "API request failed with status 500 Internal Server Error: {}",
+            "x".repeat(500)
+        );
+        let reason = post_process_failure_reason(&error, "", "hello there");
+        assert_eq!(reason.chars().count(), MAX_FAILURE_REASON_CHARS);
+        assert!(reason.ends_with('…'));
+    }
+
+    #[test]
+    fn an_empty_answer_counts_as_a_failure() {
+        // Pasting nothing would lose the dictation; the original is used instead.
+        assert!(matches!(
+            processed_or_failed("  \n".to_string()),
+            PostProcessOutcome::Failed(_)
+        ));
+        assert_eq!(
+            processed_or_failed("Cleaned text.".to_string()),
+            PostProcessOutcome::Processed("Cleaned text.".to_string())
+        );
     }
 }

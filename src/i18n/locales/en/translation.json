@@ -704,7 +704,8 @@
     "modelLoadFailedUnknown": "unknown model",
     "pasteFailedTitle": "Failed to Paste Text",
     "pasteFailed": "Text could not be pasted into the active application.",
-    "transcriptionFailedTitle": "Transcription Failed"
+    "transcriptionFailedTitle": "Transcription Failed",
+    "postProcessFailedTitle": "Post-processing failed — pasted the original text"
   },
   "appLanguage": {
     "title": "Application Language",

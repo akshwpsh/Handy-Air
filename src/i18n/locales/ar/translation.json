@@ -701,7 +701,8 @@
     "modelLoadFailedUnknown": "نموذج غير معروف",
     "pasteFailedTitle": "فشل لصق النص",
     "pasteFailed": "تعذر لصق النص في التطبيق النشط.",
-    "transcriptionFailedTitle": "فشل التفريغ النصي"
+    "transcriptionFailedTitle": "فشل التفريغ النصي",
+    "postProcessFailedTitle": "فشلت المعالجة اللاحقة — تم لصق النص الأصلي"
   },
   "appLanguage": {
     "title": "لغة التطبيق",

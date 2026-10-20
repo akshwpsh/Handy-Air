@@ -704,7 +704,8 @@
     "modelLoadFailedUnknown": "ukendt model",
     "pasteFailedTitle": "Kunne ikke indsætte tekst",
     "pasteFailed": "Teksten kunne ikke indsættes i det aktive program.",
-    "transcriptionFailedTitle": "Transskription mislykkedes"
+    "transcriptionFailedTitle": "Transskription mislykkedes",
+    "postProcessFailedTitle": "Efterbehandling mislykkedes — den oprindelige tekst blev indsat"
   },
   "appLanguage": {
     "title": "Applikationssprog",

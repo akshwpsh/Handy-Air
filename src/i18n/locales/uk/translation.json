@@ -701,7 +701,8 @@
     "modelLoadFailedUnknown": "невідома модель",
     "pasteFailedTitle": "Не вдалося вставити текст",
     "pasteFailed": "Не вдалося вставити текст до активної програми.",
-    "transcriptionFailedTitle": "Помилка транскрипції"
+    "transcriptionFailedTitle": "Помилка транскрипції",
+    "postProcessFailedTitle": "Постобробка не вдалася — вставлено оригінальний текст"
   },
   "appLanguage": {
     "title": "Мова інтерфейсу",

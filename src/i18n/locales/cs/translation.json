@@ -701,7 +701,8 @@
     "modelLoadFailedUnknown": "neznámý model",
     "pasteFailedTitle": "Vložení textu se nezdařilo",
     "pasteFailed": "Text nebylo možné vložit do aktivní aplikace.",
-    "transcriptionFailedTitle": "Přepis selhal"
+    "transcriptionFailedTitle": "Přepis selhal",
+    "postProcessFailedTitle": "Následné zpracování selhalo — vložen původní text"
   },
   "appLanguage": {
     "title": "Jazyk aplikace",

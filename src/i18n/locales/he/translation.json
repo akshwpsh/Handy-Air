@@ -701,7 +701,8 @@
     "modelLoadFailedUnknown": "מודל לא ידוע",
     "pasteFailedTitle": "ההדבקה נכשלה",
     "pasteFailed": "לא ניתן היה להדביק את הטקסט ביישום הפעיל.",
-    "transcriptionFailedTitle": "התמלול נכשל"
+    "transcriptionFailedTitle": "התמלול נכשל",
+    "postProcessFailedTitle": "העיבוד המשלים נכשל — הטקסט המקורי הודבק"
   },
   "appLanguage": {
     "title": "שפת האפליקציה",

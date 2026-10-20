@@ -704,7 +704,8 @@
     "modelLoadFailedUnknown": "onbekend model",
     "pasteFailedTitle": "Tekst plakken mislukt",
     "pasteFailed": "Tekst kon niet worden geplakt in de actieve applicatie.",
-    "transcriptionFailedTitle": "Transcriptie mislukt"
+    "transcriptionFailedTitle": "Transcriptie mislukt",
+    "postProcessFailedTitle": "Naverwerking mislukt — originele tekst geplakt"
   },
   "appLanguage": {
     "title": "Interfacetaal",

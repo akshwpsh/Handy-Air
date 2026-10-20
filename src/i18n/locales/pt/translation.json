@@ -701,7 +701,8 @@
     "modelLoadFailedUnknown": "modelo desconhecido",
     "pasteFailedTitle": "Falha ao colar o texto",
     "pasteFailed": "Não foi possível colar o texto no aplicativo ativo.",
-    "transcriptionFailedTitle": "Falha na transcrição"
+    "transcriptionFailedTitle": "Falha na transcrição",
+    "postProcessFailedTitle": "Falha no pós-processamento — texto original colado"
   },
   "appLanguage": {
     "title": "Idioma da Aplicação",
