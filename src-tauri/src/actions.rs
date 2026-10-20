@@ -375,6 +375,7 @@ async fn post_process_transcription(
             Some(system_prompt),
             Some(json_schema),
             disable_reasoning,
+            settings.post_process_temperature,
         )
         .await
         {
@@ -432,6 +433,7 @@ async fn post_process_transcription(
         &model,
         processed_prompt,
         disable_reasoning,
+        settings.post_process_temperature,
     )
     .await
     {
@@ -1291,6 +1293,21 @@ mod tests {
                 ),
                 "answer {answer:?} (structured: {structured_output}) must count as a failure"
             );
+        }
+    }
+
+    #[tokio::test]
+    async fn the_temperature_setting_reaches_the_request() {
+        for (temperature, structured_output) in
+            [(Some(0.0), false), (Some(0.5), true), (None, false)]
+        {
+            let server = serve(|_| ("200 OK", completion("Cleaned."))).await;
+            let mut settings = settings_for(&server.base_url, structured_output);
+            settings.post_process_temperature = temperature;
+            post_process_transcription(&settings, "hello").await;
+
+            let sent = server.requests()[0].get("temperature").cloned();
+            assert_eq!(sent, temperature.map(|t| serde_json::json!(t)));
         }
     }
 

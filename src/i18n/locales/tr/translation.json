@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Model ara veya seç",
           "placeholderNoOptions": "Model adı yazın",
           "refreshModels": "Modelleri Yenile"
+        },
+        "temperature": {
+          "title": "Sıcaklık (Temperature)",
+          "description": "Son işlem sonucunun ne kadar değişebileceği. 0'da aynı dikte her seferinde aynı sonucu verir ve söylediğinize en yakın kalır.",
+          "useModelDefault": {
+            "title": "Modelin varsayılanını kullan",
+            "description": "Sıcaklık gönderilmez, model kendi değerini kullanır. Sonuçlar bir dikteden diğerine daha çok değişir."
+          }
         }
       },
       "prompts": {

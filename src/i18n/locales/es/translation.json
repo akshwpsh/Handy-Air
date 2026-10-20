@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Buscar o seleccionar un modelo",
           "placeholderNoOptions": "Escribe un nombre de modelo",
           "refreshModels": "Actualizar modelos"
+        },
+        "temperature": {
+          "title": "Temperatura",
+          "description": "Cuánto puede variar el resultado del post proceso. Con 0, el mismo dictado da siempre el mismo resultado, el más fiel a lo que dijiste.",
+          "useModelDefault": {
+            "title": "Usar el valor predeterminado del modelo",
+            "description": "No se envía temperatura y el modelo usa la suya. Los resultados varían más de un dictado a otro."
+          }
         }
       },
       "prompts": {

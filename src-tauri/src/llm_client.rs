@@ -90,11 +90,20 @@ fn reasoning_disable_params(provider: &PostProcessProvider) -> ReasoningParams {
     }
 }
 
-/// Endpoints (base_url|model) that rejected the reasoning-disable fields with a
-/// 4xx. Remembered for the lifetime of the process so every dictation after the
-/// first skips the doomed attempt and goes straight to a plain request.
-fn reasoning_rejections() -> &'static Mutex<HashSet<String>> {
-    static REJECTED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+/// Optional request fields that not every OpenAI-compatible endpoint accepts.
+/// A request that carries one may be refused with a 400/422 just for that.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum OptionalField {
+    /// The reasoning-disable fields (see `reasoning_disable_params`).
+    Reasoning,
+    Temperature,
+}
+
+/// Fields an endpoint (base_url|model) rejected. Remembered for the lifetime of
+/// the process so every dictation after the first leaves them out and skips
+/// the doomed attempt.
+fn field_rejections() -> &'static Mutex<HashSet<(String, OptionalField)>> {
+    static REJECTED: OnceLock<Mutex<HashSet<(String, OptionalField)>>> = OnceLock::new();
     REJECTED.get_or_init(|| Mutex::new(HashSet::new()))
 }
 
@@ -102,17 +111,33 @@ fn endpoint_key(provider: &PostProcessProvider, model: &str) -> String {
     format!("{}|{}", provider.base_url.trim_end_matches('/'), model)
 }
 
-fn is_known_rejected(key: &str) -> bool {
-    reasoning_rejections()
+fn is_known_rejected(key: &str, field: OptionalField) -> bool {
+    field_rejections()
         .lock()
-        .map(|set| set.contains(key))
+        .map(|set| set.contains(&(key.to_string(), field)))
         .unwrap_or(false)
 }
 
-fn remember_rejection(key: String) {
-    if let Ok(mut set) = reasoning_rejections().lock() {
-        set.insert(key);
+fn remember_rejection(key: &str, field: OptionalField) {
+    if let Ok(mut set) = field_rejections().lock() {
+        set.insert((key.to_string(), field));
     }
+}
+
+/// What to leave out, in order, after a 400/422 to a request that carried
+/// `sent` (listed in the order they should go). Each field is dropped on its own
+/// first, so a single rejected field is found and only it is left out from then
+/// on; dropping all of them comes last, for an endpoint that rejects each one.
+fn retry_plan(sent: &[OptionalField]) -> Vec<Vec<OptionalField>> {
+    let mut plan: Vec<Vec<OptionalField>> = sent.iter().map(|field| vec![*field]).collect();
+    if sent.len() > 1 {
+        plan.push(sent.to_vec());
+    }
+    plan
+}
+
+fn is_field_rejection(status: reqwest::StatusCode) -> bool {
+    matches!(status.as_u16(), 400 | 422)
 }
 
 #[derive(Debug, Serialize)]
@@ -124,6 +149,25 @@ struct ChatCompletionRequest {
     response_format: Option<ResponseFormat>,
     #[serde(flatten)]
     reasoning: ReasoningParams,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
+}
+
+impl ChatCompletionRequest {
+    /// The optional fields this request carries, in the order a retry drops
+    /// them. Temperature goes first: skipping reasoning matters more (it keeps
+    /// a reasoning model from spending its whole budget thinking), so that is
+    /// kept for as long as possible.
+    fn optional_fields(&self) -> Vec<OptionalField> {
+        let mut fields = Vec::new();
+        if self.temperature.is_some() {
+            fields.push(OptionalField::Temperature);
+        }
+        if !self.reasoning.is_empty() {
+            fields.push(OptionalField::Reasoning);
+        }
+        fields
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -348,6 +392,7 @@ pub async fn send_chat_completion(
     model: &str,
     prompt: String,
     disable_reasoning: bool,
+    temperature: Option<f32>,
 ) -> Result<Option<String>, String> {
     send_chat_completion_with_schema(
         provider,
@@ -357,6 +402,7 @@ pub async fn send_chat_completion(
         None,
         None,
         disable_reasoning,
+        temperature,
     )
     .await
 }
@@ -366,11 +412,14 @@ pub async fn send_chat_completion(
 /// system_prompt is used as the system message when provided.
 ///
 /// When disable_reasoning is set, the request carries the reasoning-disable
-/// fields the endpoint is expected to understand. Not every OpenAI-compatible
-/// endpoint accepts them (DeepSeek, Gemini's compat layer, and some OpenRouter
-/// upstreams reject with 400), so a 400/422 answer to such a request triggers
-/// one retry without the fields, and the rejection is remembered per
-/// (base_url, model) so later requests skip the failing attempt entirely.
+/// fields the endpoint is expected to understand, and `temperature`, when set,
+/// is sent as is. Not every OpenAI-compatible endpoint accepts either (DeepSeek,
+/// Gemini's compat layer and some OpenRouter upstreams reject the reasoning
+/// fields; OpenAI's reasoning models reject a temperature other than 1). So a
+/// 400/422 answer to such a request is retried without them (see
+/// `retry_plan`), and whichever field was rejected is remembered per
+/// (base_url, model) so later requests leave it out from the start.
+#[allow(clippy::too_many_arguments)]
 pub async fn send_chat_completion_with_schema(
     provider: &PostProcessProvider,
     api_key: String,
@@ -379,6 +428,7 @@ pub async fn send_chat_completion_with_schema(
     system_prompt: Option<String>,
     json_schema: Option<Value>,
     disable_reasoning: bool,
+    temperature: Option<f32>,
 ) -> Result<Option<String>, String> {
     let base_url = provider.base_url.trim_end_matches('/');
     let url = format!("{}/chat/completions", base_url);
@@ -418,11 +468,12 @@ pub async fn send_chat_completion_with_schema(
     });
 
     let key = endpoint_key(provider, model);
-    let reasoning = if disable_reasoning && !is_known_rejected(&key) {
+    let reasoning = if disable_reasoning && !is_known_rejected(&key, OptionalField::Reasoning) {
         reasoning_disable_params(provider)
     } else {
         ReasoningParams::default()
     };
+    let temperature = temperature.filter(|_| !is_known_rejected(&key, OptionalField::Temperature));
 
     let mut request_body = ChatCompletionRequest {
         model: model.to_string(),
@@ -430,6 +481,7 @@ pub async fn send_chat_completion_with_schema(
         stream: false,
         response_format,
         reasoning,
+        temperature,
     };
 
     let mut response = client
@@ -446,41 +498,58 @@ pub async fn send_chat_completion_with_schema(
         sanitized_url(response.url())
     );
 
-    // A 400/422 on a request carrying reasoning-disable fields is almost always
-    // the endpoint rejecting those fields — retry once without them.
-    if !status.is_success()
-        && matches!(status.as_u16(), 400 | 422)
-        && !request_body.reasoning.is_empty()
-    {
-        let error_text = response.text().await.unwrap_or_else(|e| {
-            report_reqwest_error("Failed to read reasoning rejection response", &e)
-        });
-        info!(
-            "Endpoint rejected request with reasoning disabled (status {}): {}. Retrying without reasoning fields",
-            status, error_text
-        );
-
-        request_body.reasoning = ReasoningParams::default();
-        response = client
-            .post(&url)
-            .json(&request_body)
-            .send()
-            .await
-            .map_err(|e| report_reqwest_error("HTTP retry failed", &e))?;
-        status = response.status();
-        debug!(
-            "Chat completion retry response received with status {} over {:?} from {}",
-            status,
-            response.version(),
-            sanitized_url(response.url())
-        );
-
-        if status.is_success() {
+    // A 400/422 on a request carrying optional fields is almost always the
+    // endpoint rejecting one of them. Retry without them, following
+    // `retry_plan`, and stop at the first answer that is not such a rejection.
+    if is_field_rejection(status) {
+        let sent_reasoning = request_body.reasoning.clone();
+        let sent_temperature = request_body.temperature;
+        for dropped in retry_plan(&request_body.optional_fields()) {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|e| report_reqwest_error("Failed to read rejection response", &e));
             info!(
-                "Retry without reasoning fields succeeded; '{}' (model '{}') will skip them from now on",
-                sanitized_url_for_log(base_url), model
+                "Endpoint rejected request (status {}): {}. Retrying without {:?}",
+                status, error_text, dropped
             );
-            remember_rejection(key);
+
+            request_body.reasoning = if dropped.contains(&OptionalField::Reasoning) {
+                ReasoningParams::default()
+            } else {
+                sent_reasoning.clone()
+            };
+            request_body.temperature =
+                sent_temperature.filter(|_| !dropped.contains(&OptionalField::Temperature));
+            response = client
+                .post(&url)
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| report_reqwest_error("HTTP retry failed", &e))?;
+            status = response.status();
+            debug!(
+                "Chat completion retry response received with status {} over {:?} from {}",
+                status,
+                response.version(),
+                sanitized_url(response.url())
+            );
+
+            if status.is_success() {
+                info!(
+                    "Retry without {:?} succeeded; '{}' (model '{}') will leave them out from now on",
+                    dropped,
+                    sanitized_url_for_log(base_url),
+                    model
+                );
+                for field in dropped {
+                    remember_rejection(&key, field);
+                }
+                break;
+            }
+            if !is_field_rejection(status) {
+                break;
+            }
         }
     }
 
@@ -673,6 +742,7 @@ pub(crate) mod test_server {
 
 #[cfg(test)]
 mod tests {
+    use super::test_server::{completion, serve, TestServer};
     use super::*;
     use std::fmt;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -718,6 +788,7 @@ mod tests {
             stream: false,
             response_format: None,
             reasoning,
+            temperature: None,
         };
         serde_json::to_value(&request).unwrap()
     }
@@ -937,10 +1008,161 @@ Cleaned text."
         let deepseek = provider("custom", "https://api.deepseek.com/");
         let key = endpoint_key(&deepseek, "deepseek-chat");
         assert_eq!(key, "https://api.deepseek.com|deepseek-chat");
-        assert!(!is_known_rejected(&key));
-        remember_rejection(key.clone());
-        assert!(is_known_rejected(&key));
-        // A different model on the same endpoint is tracked separately
-        assert!(!is_known_rejected(&endpoint_key(&deepseek, "other-model")));
+        assert!(!is_known_rejected(&key, OptionalField::Reasoning));
+        remember_rejection(&key, OptionalField::Reasoning);
+        assert!(is_known_rejected(&key, OptionalField::Reasoning));
+        // Each field, and each model on the same endpoint, is tracked separately
+        assert!(!is_known_rejected(&key, OptionalField::Temperature));
+        assert!(!is_known_rejected(
+            &endpoint_key(&deepseek, "other-model"),
+            OptionalField::Reasoning
+        ));
+    }
+
+    #[test]
+    fn temperature_is_sent_only_when_set() {
+        let mut request = ChatCompletionRequest {
+            model: "test-model".to_string(),
+            messages: Vec::new(),
+            stream: false,
+            response_format: None,
+            reasoning: ReasoningParams::default(),
+            temperature: Some(0.0),
+        };
+        assert_eq!(serde_json::to_value(&request).unwrap()["temperature"], 0.0);
+        request.temperature = None;
+        assert!(serde_json::to_value(&request)
+            .unwrap()
+            .get("temperature")
+            .is_none());
+    }
+
+    #[test]
+    fn each_field_is_dropped_alone_before_all_are() {
+        use OptionalField::{Reasoning, Temperature};
+        assert_eq!(
+            retry_plan(&[Temperature, Reasoning]),
+            vec![
+                vec![Temperature],
+                vec![Reasoning],
+                vec![Temperature, Reasoning]
+            ]
+        );
+        assert_eq!(retry_plan(&[Reasoning]), vec![vec![Reasoning]]);
+        assert!(retry_plan(&[]).is_empty());
+    }
+
+    /// An endpoint that refuses, with a 400, any request carrying one of the
+    /// `rejected` fields, and answers everything else.
+    async fn rejecting(rejected: &'static [&'static str]) -> TestServer {
+        serve(move |body| {
+            if rejected.iter().any(|field| body.get(*field).is_some()) {
+                (
+                    "400 Bad Request",
+                    r#"{"error":{"message":"Unsupported parameter"}}"#.to_string(),
+                )
+            } else {
+                ("200 OK", completion("Cleaned text."))
+            }
+        })
+        .await
+    }
+
+    /// Ask with reasoning disabled (sent as `reasoning_effort` to a custom
+    /// endpoint) when `disable_reasoning`, and temperature 0.
+    async fn ask(server: &TestServer, disable_reasoning: bool) -> Result<Option<String>, String> {
+        send_chat_completion(
+            &provider("custom", &server.base_url),
+            String::new(),
+            "test-model",
+            "hi".to_string(),
+            disable_reasoning,
+            Some(0.0),
+        )
+        .await
+    }
+
+    /// (reasoning sent, temperature sent) for each request the server saw.
+    fn fields_sent(server: &TestServer) -> Vec<(bool, bool)> {
+        server
+            .requests()
+            .iter()
+            .map(|body| {
+                (
+                    body.get("reasoning_effort").is_some(),
+                    body.get("temperature").is_some(),
+                )
+            })
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn a_rejected_temperature_is_dropped_and_reasoning_kept() {
+        let server = rejecting(&["temperature"]).await;
+        assert_eq!(ask(&server, true).await, Ok(Some("Cleaned text.".into())));
+        assert_eq!(fields_sent(&server), [(true, true), (true, false)]);
+
+        // Remembered: the next request leaves only temperature out.
+        ask(&server, true).await.unwrap();
+        assert_eq!(fields_sent(&server)[2..], [(true, false)]);
+    }
+
+    #[tokio::test]
+    async fn rejected_reasoning_fields_are_dropped_and_temperature_kept() {
+        let server = rejecting(&["reasoning_effort"]).await;
+        assert_eq!(ask(&server, true).await, Ok(Some("Cleaned text.".into())));
+        assert_eq!(
+            fields_sent(&server),
+            [(true, true), (true, false), (false, true)]
+        );
+
+        ask(&server, true).await.unwrap();
+        assert_eq!(fields_sent(&server)[3..], [(false, true)]);
+    }
+
+    #[tokio::test]
+    async fn an_endpoint_rejecting_both_fields_gets_neither() {
+        let server = rejecting(&["reasoning_effort", "temperature"]).await;
+        assert_eq!(ask(&server, true).await, Ok(Some("Cleaned text.".into())));
+        assert_eq!(
+            fields_sent(&server),
+            [(true, true), (true, false), (false, true), (false, false)]
+        );
+
+        ask(&server, true).await.unwrap();
+        assert_eq!(fields_sent(&server)[4..], [(false, false)]);
+    }
+
+    #[tokio::test]
+    async fn a_lone_temperature_is_retried_without_it() {
+        let server = rejecting(&["temperature"]).await;
+        assert_eq!(ask(&server, false).await, Ok(Some("Cleaned text.".into())));
+        assert_eq!(fields_sent(&server), [(false, true), (false, false)]);
+    }
+
+    #[tokio::test]
+    async fn a_rejection_unrelated_to_the_fields_blames_neither() {
+        // The request is refused whatever it carries (a bad prompt, say).
+        let server = serve(|_| {
+            (
+                "400 Bad Request",
+                r#"{"error":{"message":"Bad request"}}"#.to_string(),
+            )
+        })
+        .await;
+        let error = ask(&server, true).await.unwrap_err();
+        assert!(error.contains("400"), "{error}");
+        assert_eq!(fields_sent(&server).len(), 4);
+
+        // Nothing was remembered, so the next request tries both again.
+        let _ = ask(&server, true).await;
+        assert_eq!(fields_sent(&server)[4], (true, true));
+    }
+
+    #[tokio::test]
+    async fn a_server_error_is_not_retried() {
+        let server = serve(|_| ("500 Internal Server Error", "{}".to_string())).await;
+        assert!(ask(&server, true).await.is_err());
+        assert_eq!(fields_sent(&server), [(true, true)]);
     }
 }

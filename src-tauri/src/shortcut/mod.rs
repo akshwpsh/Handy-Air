@@ -1085,6 +1085,27 @@ pub fn change_post_process_model_setting(
     Ok(())
 }
 
+/// Set the post-processing temperature, or `None` to send none at all.
+#[tauri::command]
+#[specta::specta]
+pub fn change_post_process_temperature_setting(
+    app: AppHandle,
+    temperature: Option<f32>,
+) -> Result<(), String> {
+    if let Some(value) = temperature {
+        if !(0.0..=1.0).contains(&value) {
+            return Err(format!(
+                "Temperature must be between 0 and 1, got {}",
+                value
+            ));
+        }
+    }
+    let mut settings = settings::get_settings(&app);
+    settings.post_process_temperature = temperature;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn set_post_process_provider(app: AppHandle, provider_id: String) -> Result<(), String> {

@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Wyszukaj lub wybierz model",
           "placeholderNoOptions": "Wpisz nazwę modelu",
           "refreshModels": "Odśwież modele"
+        },
+        "temperature": {
+          "title": "Temperatura",
+          "description": "Jak bardzo może się różnić wynik postprocesu. Przy 0 to samo dyktowanie za każdym razem daje ten sam wynik, najbliższy wypowiedzianym słowom.",
+          "useModelDefault": {
+            "title": "Użyj domyślnej wartości modelu",
+            "description": "Temperatura nie jest wysyłana i model używa własnej. Wyniki bardziej różnią się między dyktowaniami."
+          }
         }
       },
       "prompts": {

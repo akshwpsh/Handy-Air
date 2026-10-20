@@ -466,6 +466,10 @@ pub struct AppSettings {
     pub post_process_prompts: Vec<LLMPrompt>,
     #[serde(default)]
     pub post_process_selected_prompt_id: Option<String>,
+    /// Sampling temperature sent with post-processing requests. `None` sends
+    /// none, leaving the model's own default.
+    #[serde(default = "default_post_process_temperature")]
+    pub post_process_temperature: Option<f32>,
     /// Transcription API: send recorded audio to an OpenAI-compatible
     /// `/audio/transcriptions` endpoint instead of running a Local Engine.
     /// Off by default — see docs/adr/0001-opt-in-transcription-api.md.
@@ -806,6 +810,13 @@ fn default_transcription_api_model() -> String {
     DEFAULT_TRANSCRIPTION_API_MODEL.to_string()
 }
 
+/// 0 makes the cleanup repeatable: measured on Groq qwen/qwen3.8-27b with ten
+/// Korean dictations sent twice each, 9 of 10 came back identical at 0, against
+/// 2 of 10 with no temperature sent, which also invented words in one answer.
+fn default_post_process_temperature() -> Option<f32> {
+    Some(0.0)
+}
+
 fn default_post_process_prompts() -> Vec<LLMPrompt> {
     vec![LLMPrompt {
         id: "default_improve_transcriptions".to_string(),
@@ -989,6 +1000,7 @@ pub fn get_default_settings() -> AppSettings {
         post_process_models: default_post_process_models(),
         post_process_prompts: default_post_process_prompts(),
         post_process_selected_prompt_id: None,
+        post_process_temperature: default_post_process_temperature(),
         transcription_api_enabled: false,
         transcription_api_base_url: default_transcription_api_base_url(),
         transcription_api_key: SecretString::default(),
@@ -1307,6 +1319,22 @@ mod tests {
         assert!(settings.filler_word_removal_enabled);
         // Bindings default to empty; the load path merges the real defaults in.
         assert!(settings.bindings.is_empty());
+    }
+
+    #[test]
+    fn post_process_temperature_defaults_to_zero_and_keeps_an_explicit_none() {
+        let missing: AppSettings = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert_eq!(missing.post_process_temperature, Some(0.0));
+
+        // "Use the model's default" is stored as null and must stay None after
+        // a reload, not snap back to the default 0.
+        for temperature in [None, Some(0.3)] {
+            let mut settings = get_default_settings();
+            settings.post_process_temperature = temperature;
+            let stored = serde_json::to_value(&settings).unwrap();
+            let reloaded: AppSettings = serde_json::from_value(stored).unwrap();
+            assert_eq!(reloaded.post_process_temperature, temperature);
+        }
     }
 
     /// Frozen snapshot of a real v0.9.0-era settings store, as written to

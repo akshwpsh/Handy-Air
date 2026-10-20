@@ -435,6 +435,14 @@
           "placeholderWithOptions": "搜尋或選擇模型",
           "placeholderNoOptions": "輸入模型名稱",
           "refreshModels": "重新整理模型"
+        },
+        "temperature": {
+          "title": "溫度 (Temperature)",
+          "description": "後處理結果可以有多大變化。設為 0 時，同一段聽寫每次都會得到相同結果，也最貼近你說的內容。",
+          "useModelDefault": {
+            "title": "使用模型預設值",
+            "description": "不傳送溫度，由模型使用自己的預設值。每次聽寫的結果差異會更大。"
+          }
         }
       },
       "prompts": {

@@ -435,6 +435,14 @@
           "placeholderWithOptions": "모델 검색 또는 선택",
           "placeholderNoOptions": "모델 이름 입력",
           "refreshModels": "모델 새로고침"
+        },
+        "temperature": {
+          "title": "온도 (Temperature)",
+          "description": "후처리 결과가 얼마나 달라질 수 있는지 정합니다. 0이면 같은 받아쓰기에 매번 같은 결과가 나오고, 말한 내용에 가장 가깝게 다듬습니다.",
+          "useModelDefault": {
+            "title": "모델 기본값 사용",
+            "description": "온도를 보내지 않고 모델의 기본값을 씁니다. 받아쓰기마다 결과가 더 많이 달라질 수 있습니다."
+          }
         }
       },
       "prompts": {

@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Cerca o scegli un modello",
           "placeholderNoOptions": "Digita il nome di un modello",
           "refreshModels": "Aggiorna modelli"
+        },
+        "temperature": {
+          "title": "Temperatura",
+          "description": "Quanto può variare il risultato della post-elaborazione. Con 0 la stessa dettatura dà sempre lo stesso risultato, il più fedele a ciò che hai detto.",
+          "useModelDefault": {
+            "title": "Usa il valore predefinito del modello",
+            "description": "Non viene inviata alcuna temperatura e il modello usa la propria. I risultati variano di più da una dettatura all'altra."
+          }
         }
       },
       "prompts": {

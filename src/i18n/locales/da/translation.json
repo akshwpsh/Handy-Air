@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Søg eller vælg en model",
           "placeholderNoOptions": "Skriv et modelnavn",
           "refreshModels": "Opdater modeller"
+        },
+        "temperature": {
+          "title": "Temperatur",
+          "description": "Hvor meget resultatet af oprydningen må variere. 0 giver samme resultat for samme diktat hver gang og holder sig tættest på det, du sagde.",
+          "useModelDefault": {
+            "title": "Brug modellens standard",
+            "description": "Der sendes ingen temperatur, så modellen bruger sin egen. Resultaterne varierer mere fra diktat til diktat."
+          }
         }
       },
       "prompts": {

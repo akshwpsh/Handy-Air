@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Tìm kiếm hoặc chọn một mô hình",
           "placeholderNoOptions": "Nhập tên mô hình",
           "refreshModels": "Làm mới mô hình"
+        },
+        "temperature": {
+          "title": "Nhiệt độ (Temperature)",
+          "description": "Mức độ kết quả xử lý sau có thể thay đổi. Ở mức 0, cùng một lần đọc luôn cho cùng một kết quả, sát nhất với những gì bạn nói.",
+          "useModelDefault": {
+            "title": "Dùng giá trị mặc định của mô hình",
+            "description": "Không gửi nhiệt độ, mô hình dùng giá trị riêng. Kết quả thay đổi nhiều hơn giữa các lần đọc."
+          }
         }
       },
       "prompts": {

@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Modell suchen oder auswählen",
           "placeholderNoOptions": "Modellnamen eingeben",
           "refreshModels": "Modelle aktualisieren"
+        },
+        "temperature": {
+          "title": "Temperatur",
+          "description": "Wie stark das Ergebnis der Nachbearbeitung schwanken darf. Bei 0 liefert dasselbe Diktat jedes Mal dasselbe Ergebnis, das am nächsten an dem bleibt, was Sie gesagt haben.",
+          "useModelDefault": {
+            "title": "Standardwert des Modells verwenden",
+            "description": "Es wird keine Temperatur gesendet, das Modell nutzt seinen eigenen Wert. Die Ergebnisse schwanken stärker von Diktat zu Diktat."
+          }
         }
       },
       "prompts": {

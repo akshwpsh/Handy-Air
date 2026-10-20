@@ -435,6 +435,14 @@
           "placeholderWithOptions": "搜索或选择模型",
           "placeholderNoOptions": "输入模型名称",
           "refreshModels": "刷新模型"
+        },
+        "temperature": {
+          "title": "温度 (Temperature)",
+          "description": "后处理结果可以有多大变化。设为 0 时，同一段听写每次都得到相同的结果，也最贴近你说的内容。",
+          "useModelDefault": {
+            "title": "使用模型默认值",
+            "description": "不发送温度，由模型使用自己的默认值。每次听写的结果差异会更大。"
+          }
         }
       },
       "prompts": {

@@ -435,6 +435,14 @@
           "placeholderWithOptions": "モデルを検索または選択",
           "placeholderNoOptions": "モデル名を入力",
           "refreshModels": "モデルを更新"
+        },
+        "temperature": {
+          "title": "温度 (Temperature)",
+          "description": "後処理の結果がどれだけ変わりうるかを決めます。0 なら同じ音声入力には毎回同じ結果が返り、話した内容に最も忠実になります。",
+          "useModelDefault": {
+            "title": "モデルの既定値を使う",
+            "description": "温度を送らず、モデル独自の既定値を使います。入力ごとに結果がばらつきやすくなります。"
+          }
         }
       },
       "prompts": {

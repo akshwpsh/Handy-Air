@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Vyhledejte nebo vyberte model",
           "placeholderNoOptions": "Zadejte název modelu",
           "refreshModels": "Obnovit modely"
+        },
+        "temperature": {
+          "title": "Teplota",
+          "description": "Jak moc se může výsledek úprav lišit. Hodnota 0 dává pro stejný diktát pokaždé stejný výsledek a drží se nejblíže tomu, co jste řekli.",
+          "useModelDefault": {
+            "title": "Použít výchozí hodnotu modelu",
+            "description": "Teplota se neodesílá a model použije svou vlastní. Výsledky se mezi diktáty liší víc."
+          }
         }
       },
       "prompts": {

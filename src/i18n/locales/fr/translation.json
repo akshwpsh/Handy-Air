@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Rechercher ou sélectionner un modèle",
           "placeholderNoOptions": "Tapez un nom de modèle",
           "refreshModels": "Actualiser les modèles"
+        },
+        "temperature": {
+          "title": "Température",
+          "description": "Dans quelle mesure le résultat du post-traitement peut varier. À 0, une même dictée donne toujours le même résultat, le plus fidèle à ce que vous avez dit.",
+          "useModelDefault": {
+            "title": "Utiliser la valeur par défaut du modèle",
+            "description": "Aucune température n'est envoyée ; le modèle utilise la sienne. Les résultats varient davantage d'une dictée à l'autre."
+          }
         }
       },
       "prompts": {

@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Sök eller välj en modell",
           "placeholderNoOptions": "Ange ett modellnamn",
           "refreshModels": "Uppdatera modeller"
+        },
+        "temperature": {
+          "title": "Temperatur",
+          "description": "Hur mycket resultatet av efterbearbetningen får variera. Med 0 ger samma diktering samma resultat varje gång, så nära det du sa som möjligt.",
+          "useModelDefault": {
+            "title": "Använd modellens standardvärde",
+            "description": "Ingen temperatur skickas, så modellen använder sin egen. Resultaten varierar mer mellan dikteringar."
+          }
         }
       },
       "prompts": {

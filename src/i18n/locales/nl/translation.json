@@ -435,6 +435,14 @@
           "placeholderWithOptions": "Zoek of selecteer een model",
           "placeholderNoOptions": "Typ een modelnaam",
           "refreshModels": "Modellen verversen"
+        },
+        "temperature": {
+          "title": "Temperatuur",
+          "description": "Hoeveel het resultaat van de naverwerking mag variëren. Bij 0 geeft hetzelfde dictaat elke keer hetzelfde resultaat, het dichtst bij wat je zei.",
+          "useModelDefault": {
+            "title": "Standaardwaarde van het model gebruiken",
+            "description": "Er wordt geen temperatuur meegestuurd; het model gebruikt zijn eigen waarde. Resultaten variëren meer per dictaat."
+          }
         }
       },
       "prompts": {
