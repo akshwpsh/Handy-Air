@@ -950,24 +950,37 @@ impl ShortcutAction for TranscribeAction {
                                         return;
                                     }
 
-                                    match utils::paste(final_text, ah_clone.clone()) {
-                                        Ok(()) => {
-                                            debug!(
-                                                "Text pasted successfully in {:?}",
-                                                paste_time.elapsed()
-                                            );
-                                            // The unpolished text went in. Say so, or a
-                                            // retired model or bad key goes unnoticed.
-                                            if let Some(reason) = post_process_error {
-                                                let _ = ah_clone.emit("post-process-error", reason);
+                                    let pasted_unpolished =
+                                        match utils::paste(final_text, ah_clone.clone()) {
+                                            Ok(()) => {
+                                                debug!(
+                                                    "Text pasted successfully in {:?}",
+                                                    paste_time.elapsed()
+                                                );
+                                                // The unpolished text went in. Say so, or a
+                                                // retired model or bad key goes unnoticed.
+                                                if let Some(reason) = post_process_error {
+                                                    let _ =
+                                                        ah_clone.emit("post-process-error", reason);
+                                                    true
+                                                } else {
+                                                    false
+                                                }
                                             }
-                                        }
-                                        Err(e) => {
-                                            error!("Failed to paste transcription: {}", e);
-                                            let _ = ah_clone.emit("paste-error", ());
-                                        }
+                                            Err(e) => {
+                                                error!("Failed to paste transcription: {}", e);
+                                                let _ = ah_clone.emit("paste-error", ());
+                                                false
+                                            }
+                                        };
+                                    // The toast lives in the main window, which is
+                                    // usually hidden in the tray while dictating, so
+                                    // the overlay carries the warning too.
+                                    if pasted_unpolished {
+                                        utils::show_post_process_failed_overlay(&ah_clone);
+                                    } else {
+                                        utils::hide_recording_overlay(&ah_clone);
                                     }
-                                    utils::hide_recording_overlay(&ah_clone);
                                     set_tray_state(&ah_clone, TrayIconState::Idle);
                                 })
                                 .unwrap_or_else(|e| {

@@ -12,7 +12,14 @@ import type {
 import i18n, { syncLanguageFromSettings } from "@/i18n";
 import { getLanguageDirection } from "@/lib/utils/rtl";
 
-type OverlayState = "recording" | "streaming" | "transcribing" | "processing";
+type OverlayState =
+  | "recording"
+  | "streaming"
+  | "transcribing"
+  | "processing"
+  // Post-processing failed and the unpolished text was pasted. Held for a few
+  // seconds, since the main window's toast is unseen while it sits in the tray.
+  | "post_process_failed";
 
 // Number of reactive bars in the waveform (the simple, smoothed style shared by
 // every overlay form). Mic levels arrive as 16 FFT buckets; we take the first N.
@@ -279,10 +286,28 @@ const RecordingOverlay: React.FC = () => {
     );
   }
 
-  // ---- Minimal overlay: exactly one row at a time — waveform (recording), or a
-  // spinner + label (transcribing / processing). Never both. The pill animates its
-  // width between them; the cancel button is in both rows so it stays put.
+  // warning icon (left) | label (center) | nothing to cancel (right) — the same
+  // 3-zone grid, so the label stays centered.
+  const warningRow = (label: string) => (
+    <div className="sbase">
+      <div className="sbase-l">
+        <svg className="swarn-icon" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="8" cy="8" r="7.5" />
+          <path className="swarn-mark" d="M8 4.25 V8.75" />
+          <circle className="swarn-dot" cx="8" cy="11.5" r="1.1" />
+        </svg>
+      </div>
+      <span className="swork-label swarn-label">{label}</span>
+      <div className="sbase-r" />
+    </div>
+  );
+
+  // ---- Minimal overlay: exactly one row at a time — waveform (recording), a
+  // spinner + label (transcribing / processing), or a warning. Never both. The
+  // pill animates its width between them; the cancel button is in the recording
+  // and working rows so it stays put.
   const working = state === "transcribing" || state === "processing";
+  const warning = state === "post_process_failed";
   const workLabel =
     state === "processing"
       ? t("overlay.processing")
@@ -294,9 +319,15 @@ const RecordingOverlay: React.FC = () => {
       className={`ov-stage ${position} ov-fade ${isVisible ? "show" : ""}`}
     >
       <div
-        className={`scard compact ${working && isVisible ? "cworking" : ""}`}
+        className={`scard compact ${working && isVisible ? "cworking" : ""} ${
+          warning && isVisible ? "cwarn" : ""
+        }`}
       >
-        {working ? workingRow(workLabel, true) : listeningRow(false, true)}
+        {warning
+          ? warningRow(t("overlay.postProcessFailed"))
+          : working
+            ? workingRow(workLabel, true)
+            : listeningRow(false, true)}
       </div>
     </div>
   );

@@ -719,7 +719,8 @@
   },
   "overlay": {
     "transcribing": "Расшифровка...",
-    "processing": "Обработка..."
+    "processing": "Обработка...",
+    "postProcessFailed": "Постобработка не удалась"
   },
   "whatsNew": {
     "title": "Новое в Handy v{{version}}"

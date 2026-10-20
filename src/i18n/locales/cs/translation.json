@@ -719,7 +719,8 @@
   },
   "overlay": {
     "transcribing": "Přepisuji...",
-    "processing": "Zpracovávám..."
+    "processing": "Zpracovávám...",
+    "postProcessFailed": "Následné zpracování selhalo"
   },
   "whatsNew": {
     "title": "Novinky v Handy v{{version}}"

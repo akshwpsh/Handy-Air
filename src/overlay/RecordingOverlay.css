@@ -56,6 +56,8 @@
   --ov-work-w: 216px; /* working pill (transcribing / polishing) -- wide enough to
                          center longer labels; shared by Live (collapsed) + minimal */
   --ov-open-w: 392px; /* Live panel, expanded */
+  --ov-warn-w: 280px; /* post-processing warning pill -- wide enough for the
+                         longest translated label (OVERLAY_WARN_WIDTH in overlay.rs) */
   --ov-base-h: 40px; /* control-row height (.sbase) */
   --ov-cap-max-h: 64px; /* max height of the scrolling live-text region */
 }
@@ -215,6 +217,10 @@
 }
 .scard.compact.cworking {
   width: var(--ov-work-w);
+}
+.scard.compact.cwarn {
+  width: var(--ov-warn-w);
+  border-color: color-mix(in srgb, var(--color-warning) 55%, transparent);
 }
 
 /* text region — auto-height open via grid-rows trick; region fades as a whole */
@@ -459,4 +465,24 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* post-processing warning — the unpolished text was pasted */
+.swarn-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: var(--color-warning);
+}
+.swarn-icon .swarn-mark {
+  fill: none;
+  stroke: var(--color-background);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+}
+.swarn-icon .swarn-dot {
+  fill: var(--color-background);
+}
+.swarn-label {
+  color: var(--color-text);
 }

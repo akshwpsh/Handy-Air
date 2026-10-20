@@ -719,7 +719,8 @@
   },
   "overlay": {
     "transcribing": "Trascrizione...",
-    "processing": "Elaborazione..."
+    "processing": "Elaborazione...",
+    "postProcessFailed": "Post-elaborazione non riuscita"
   },
   "whatsNew": {
     "title": "Novità in Handy v{{version}}"

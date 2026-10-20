@@ -719,7 +719,8 @@
   },
   "overlay": {
     "transcribing": "Transcribiendo...",
-    "processing": "Procesando..."
+    "processing": "Procesando...",
+    "postProcessFailed": "Error en el post proceso"
   },
   "whatsNew": {
     "title": "Nuevo en Handy v{{version}}"
