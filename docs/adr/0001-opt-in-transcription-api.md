@@ -13,7 +13,7 @@ explicitly enabling it and supplying an endpoint and key.
 
 This is a deliberate deviation from the local-only guarantee, not an oversight.
 Note the asymmetry with Post-processing, which has always been networked: that
-step sends only *text*, whereas this one sends the **recorded voice itself**.
+step sends only _text_, whereas this one sends the **recorded voice itself**.
 Any future change here should be weighed against that difference.
 
 ## Consequences
