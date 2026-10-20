@@ -118,6 +118,20 @@
         "checkFailed": "No s'han pogut comprovar els permisos. Torneu-ho a provar.",
         "requestFailed": "No s'ha pogut sol·licitar el permís. Torneu-ho a provar."
       }
+    },
+    "transcriptionApi": {
+      "title": "Comença sense descarregar cap model",
+      "description": "Utilitza una API de veu a text. Ideal per a ordinadors que tenen dificultats per executar un model localment.",
+      "setUp": "Configura",
+      "privacyWarning": "L'àudio que enregistris es pujarà al punt de connexió següent.",
+      "baseUrl": "Punt de connexió",
+      "apiKey": "Clau de l'API",
+      "apiKeyPlaceholder": "Enganxa la teva clau de l'API",
+      "model": "Model",
+      "loadModels": "Carrega els models",
+      "start": "Comença",
+      "checking": "S'està comprovant...",
+      "cancel": "Cancel·la"
     }
   },
   "modelSelector": {
@@ -152,7 +166,8 @@
       "translation": "Pot traduir a l'anglès",
       "translate": "Tradueix",
       "streaming": "Mostra la transcripció en temps real mentre parleu"
-    }
+    },
+    "transcriptionApi": "API de transcripció"
   },
   "settings": {
     "modelSettings": {
@@ -439,6 +454,14 @@
           "placeholderWithOptions": "Cerqueu o seleccioneu un model",
           "placeholderNoOptions": "Escriviu el nom d'un model",
           "refreshModels": "Actualitzeu els models"
+        },
+        "temperature": {
+          "title": "Temperatura",
+          "description": "Quant pot variar la neteja. Amb 0, el mateix dictat dona sempre el mateix resultat i s'ajusta més al que has dit.",
+          "useModelDefault": {
+            "title": "Utilitza el valor per defecte del model",
+            "description": "No s'envia cap temperatura, així que el model utilitza la seva. Els resultats varien més d'un dictat a un altre."
+          }
         }
       },
       "prompts": {
@@ -645,6 +668,33 @@
           "details": "La transcripció local de veu a text del Handy es basa en el transcribe.cpp i el ggml. Gràcies a la gran feina de Georgi Gerganov i dels col·laboradors."
         }
       }
+    },
+    "transcriptionApi": {
+      "groupTitle": "API de transcripció",
+      "enable": {
+        "title": "Transcriu mitjançant una API",
+        "description": "Envia els enregistraments a un servei de veu a text en lloc d'executar un model en aquest ordinador. Útil quan la transcripció local és massa lenta."
+      },
+      "privacyWarning": "L'àudio enregistrat es puja al punt de connexió que configuris. La transcripció ja no es fa només en aquest ordinador.",
+      "baseUrl": {
+        "title": "Punt de connexió",
+        "description": "Qualsevol punt de connexió /audio/transcriptions compatible amb OpenAI. Per defecte, Groq."
+      },
+      "apiKey": {
+        "title": "Clau de l'API",
+        "description": "Es desa com a text pla al fitxer de configuració d'aquesta aplicació.",
+        "placeholder": "Enganxa la teva clau de l'API"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Quin model de veu a text cal utilitzar. Carrega la llista per veure què ofereix el punt de connexió.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Carrega els models"
+      },
+      "localFallback": {
+        "title": "Recorre a un model local",
+        "description": "Si l'API falla, transcriu amb un model descarregat. Cal un model local i pot ser lent."
+      }
     }
   },
   "footer": {
@@ -694,7 +744,8 @@
     "modelLoadFailedUnknown": "model desconegut",
     "pasteFailedTitle": "No s'ha pogut enganxar el text",
     "pasteFailed": "No s'ha pogut enganxar el text a l'aplicació activa.",
-    "transcriptionFailedTitle": "La transcripció ha fallat"
+    "transcriptionFailedTitle": "La transcripció ha fallat",
+    "postProcessFailedTitle": "El postprocessament ha fallat: s'ha enganxat el text original"
   },
   "appLanguage": {
     "title": "Llengua de l'aplicació",
@@ -711,7 +762,8 @@
   },
   "overlay": {
     "transcribing": "S'està transcrivint...",
-    "processing": "S'està processant..."
+    "processing": "S'està processant...",
+    "postProcessFailed": "El postprocessament ha fallat"
   },
   "secureInput": {
     "blockedWithCulprit_one": "{{name}} pot estar blocant 1 drecera",

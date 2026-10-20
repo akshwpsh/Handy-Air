@@ -118,6 +118,20 @@
         "checkFailed": "Gagal memeriksa izin. Silakan coba lagi.",
         "requestFailed": "Gagal meminta izin. Silakan coba lagi."
       }
+    },
+    "transcriptionApi": {
+      "title": "Mulai tanpa mengunduh model",
+      "description": "Gunakan API ucapan-ke-teks sebagai gantinya. Cocok untuk komputer yang kesulitan menjalankan model secara lokal.",
+      "setUp": "Atur",
+      "privacyWarning": "Audio yang Anda rekam akan diunggah ke endpoint di bawah.",
+      "baseUrl": "Endpoint",
+      "apiKey": "Kunci API",
+      "apiKeyPlaceholder": "Tempel kunci API Anda",
+      "model": "Model",
+      "loadModels": "Muat model",
+      "start": "Mulai",
+      "checking": "Memeriksa...",
+      "cancel": "Batal"
     }
   },
   "modelSelector": {
@@ -152,7 +166,8 @@
       "translation": "Dapat menerjemahkan ke bahasa Inggris",
       "translate": "Terjemahkan",
       "streaming": "Menampilkan transkripsi langsung saat Anda berbicara"
-    }
+    },
+    "transcriptionApi": "API Transkripsi"
   },
   "settings": {
     "modelSettings": {
@@ -439,6 +454,14 @@
           "placeholderWithOptions": "Cari atau pilih model",
           "placeholderNoOptions": "Ketik nama model",
           "refreshModels": "Segarkan model"
+        },
+        "temperature": {
+          "title": "Temperatur",
+          "description": "Seberapa bervariasi hasil perapian. Nilai 0 memberi hasil yang sama untuk dikte yang sama setiap kali dan paling dekat dengan ucapan Anda.",
+          "useModelDefault": {
+            "title": "Gunakan bawaan model",
+            "description": "Tidak mengirim temperatur, sehingga model memakai nilainya sendiri. Hasil lebih bervariasi dari satu dikte ke dikte berikutnya."
+          }
         }
       },
       "prompts": {
@@ -645,6 +668,33 @@
           "details": "Fitur ucapan-ke-teks lokal Handy dibangun menggunakan transcribe.cpp dan ggml. Terima kasih kepada Georgi Gerganov dan para kontributor atas karya luar biasa mereka."
         }
       }
+    },
+    "transcriptionApi": {
+      "groupTitle": "API Transkripsi",
+      "enable": {
+        "title": "Transkripsi lewat API",
+        "description": "Kirim rekaman ke layanan ucapan-ke-teks alih-alih menjalankan model di komputer ini. Berguna jika transkripsi lokal terlalu lambat."
+      },
+      "privacyWarning": "Audio rekaman Anda diunggah ke endpoint yang Anda atur. Transkripsi tidak lagi hanya terjadi di komputer ini.",
+      "baseUrl": {
+        "title": "Endpoint",
+        "description": "Endpoint /audio/transcriptions apa pun yang kompatibel dengan OpenAI. Bawaannya Groq."
+      },
+      "apiKey": {
+        "title": "Kunci API",
+        "description": "Disimpan sebagai teks biasa di file pengaturan aplikasi ini.",
+        "placeholder": "Tempel kunci API Anda"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Model ucapan-ke-teks yang digunakan. Muat daftarnya untuk melihat apa yang ditawarkan endpoint.",
+        "placeholder": "whisper-large-v3-turbo",
+        "refresh": "Muat model"
+      },
+      "localFallback": {
+        "title": "Beralih ke model lokal",
+        "description": "Jika API gagal, transkripsi dengan model yang sudah diunduh. Membutuhkan model lokal dan mungkin lambat."
+      }
     }
   },
   "footer": {
@@ -694,7 +744,8 @@
     "modelLoadFailedUnknown": "model tidak dikenal",
     "pasteFailedTitle": "Gagal Menempelkan Teks",
     "pasteFailed": "Teks tidak dapat ditempelkan ke aplikasi aktif.",
-    "transcriptionFailedTitle": "Transkripsi Gagal"
+    "transcriptionFailedTitle": "Transkripsi Gagal",
+    "postProcessFailedTitle": "Pascapemrosesan gagal — teks asli ditempel"
   },
   "appLanguage": {
     "title": "Bahasa Aplikasi",
@@ -711,7 +762,8 @@
   },
   "overlay": {
     "transcribing": "Mentranskripsikan...",
-    "processing": "Memproses..."
+    "processing": "Memproses...",
+    "postProcessFailed": "Pascapemrosesan gagal"
   },
   "secureInput": {
     "blockedWithCulprit_one": "{{name}} mungkin memblokir 1 pintasan",
