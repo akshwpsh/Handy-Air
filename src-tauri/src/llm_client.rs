@@ -140,6 +140,30 @@ fn is_field_rejection(status: reqwest::StatusCode) -> bool {
     matches!(status.as_u16(), 400 | 422)
 }
 
+/// Fewest completion tokens an answer is allowed, so a one-word dictation
+/// still leaves room for a sentence-long rewrite.
+const MIN_ANSWER_TOKENS: u32 = 256;
+/// Most completion tokens an answer is allowed, however long the dictation.
+const MAX_ANSWER_TOKENS: u32 = 4096;
+
+/// How many completion tokens to allow the answer to a post-processing request
+/// about `transcription`.
+///
+/// Groq checks the output a request may produce against the organization's
+/// output-tokens-per-minute limit before the model runs. Sent with no cap, a
+/// 112-character dictation was refused with a 429 for "requesting" 1041 of the
+/// free tier's 1000. The answer is a rewrite of the transcription, so the cap
+/// is sized from it: two tokens per character leaves room for a script that
+/// tokenizes poorly, or for an answer a little longer than what was said
+/// (English takes about a quarter of a token per character). An answer that
+/// still runs out is cut off and rejected, so the transcription is pasted as is.
+pub fn answer_token_budget(transcription: &str) -> u32 {
+    let chars = u32::try_from(transcription.chars().count()).unwrap_or(u32::MAX);
+    chars
+        .saturating_mul(2)
+        .clamp(MIN_ANSWER_TOKENS, MAX_ANSWER_TOKENS)
+}
+
 #[derive(Debug, Serialize)]
 struct ChatCompletionRequest {
     model: String,
@@ -151,6 +175,8 @@ struct ChatCompletionRequest {
     reasoning: ReasoningParams,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_completion_tokens: Option<u32>,
 }
 
 impl ChatCompletionRequest {
@@ -393,6 +419,7 @@ pub async fn send_chat_completion(
     prompt: String,
     disable_reasoning: bool,
     temperature: Option<f32>,
+    max_completion_tokens: Option<u32>,
 ) -> Result<Option<String>, String> {
     send_chat_completion_with_schema(
         provider,
@@ -403,6 +430,7 @@ pub async fn send_chat_completion(
         None,
         disable_reasoning,
         temperature,
+        max_completion_tokens,
     )
     .await
 }
@@ -419,6 +447,11 @@ pub async fn send_chat_completion(
 /// 400/422 answer to such a request is retried without them (see
 /// `retry_plan`), and whichever field was rejected is remembered per
 /// (base_url, model) so later requests leave it out from the start.
+///
+/// `max_completion_tokens`, when set, caps the answer (see
+/// `answer_token_budget`). It goes out only with the reasoning-disable fields:
+/// a model left free to think spends the cap on thinking and its answer is
+/// cut off, so when those fields are left out the cap is left out with them.
 #[allow(clippy::too_many_arguments)]
 pub async fn send_chat_completion_with_schema(
     provider: &PostProcessProvider,
@@ -429,6 +462,7 @@ pub async fn send_chat_completion_with_schema(
     json_schema: Option<Value>,
     disable_reasoning: bool,
     temperature: Option<f32>,
+    max_completion_tokens: Option<u32>,
 ) -> Result<Option<String>, String> {
     let base_url = provider.base_url.trim_end_matches('/');
     let url = format!("{}/chat/completions", base_url);
@@ -474,6 +508,10 @@ pub async fn send_chat_completion_with_schema(
         ReasoningParams::default()
     };
     let temperature = temperature.filter(|_| !is_known_rejected(&key, OptionalField::Temperature));
+    let max_completion_tokens = max_completion_tokens.filter(|_| !reasoning.is_empty());
+    if let Some(cap) = max_completion_tokens {
+        debug!("Capping the answer at {} completion tokens", cap);
+    }
 
     let mut request_body = ChatCompletionRequest {
         model: model.to_string(),
@@ -482,6 +520,7 @@ pub async fn send_chat_completion_with_schema(
         response_format,
         reasoning,
         temperature,
+        max_completion_tokens,
     };
 
     let mut response = client
@@ -504,6 +543,7 @@ pub async fn send_chat_completion_with_schema(
     if is_field_rejection(status) {
         let sent_reasoning = request_body.reasoning.clone();
         let sent_temperature = request_body.temperature;
+        let sent_cap = request_body.max_completion_tokens;
         for dropped in retry_plan(&request_body.optional_fields()) {
             let error_text = response
                 .text()
@@ -521,6 +561,8 @@ pub async fn send_chat_completion_with_schema(
             };
             request_body.temperature =
                 sent_temperature.filter(|_| !dropped.contains(&OptionalField::Temperature));
+            request_body.max_completion_tokens =
+                sent_cap.filter(|_| !dropped.contains(&OptionalField::Reasoning));
             response = client
                 .post(&url)
                 .json(&request_body)
@@ -789,6 +831,7 @@ mod tests {
             response_format: None,
             reasoning,
             temperature: None,
+            max_completion_tokens: None,
         };
         serde_json::to_value(&request).unwrap()
     }
@@ -1028,6 +1071,7 @@ Cleaned text."
             response_format: None,
             reasoning: ReasoningParams::default(),
             temperature: Some(0.0),
+            max_completion_tokens: None,
         };
         assert_eq!(serde_json::to_value(&request).unwrap()["temperature"], 0.0);
         request.temperature = None;
@@ -1035,6 +1079,17 @@ Cleaned text."
             .unwrap()
             .get("temperature")
             .is_none());
+    }
+
+    #[test]
+    fn the_answer_budget_follows_the_transcription() {
+        // Counted in characters, not bytes: Hangul is three bytes in UTF-8.
+        let dictation = |chars: usize| "가".repeat(chars);
+        assert_eq!(answer_token_budget(&dictation(300)), 600);
+        // The 112-character dictation Groq refused for "requesting" 1041.
+        assert_eq!(answer_token_budget(&dictation(112)), MIN_ANSWER_TOKENS);
+        assert_eq!(answer_token_budget(""), MIN_ANSWER_TOKENS);
+        assert_eq!(answer_token_budget(&dictation(10_000)), MAX_ANSWER_TOKENS);
     }
 
     #[test]
@@ -1078,8 +1133,41 @@ Cleaned text."
             "hi".to_string(),
             disable_reasoning,
             Some(0.0),
+            None,
         )
         .await
+    }
+
+    /// Ask with a 300-token cap and no temperature, so reasoning is the only
+    /// optional field a retry can drop.
+    async fn ask_capped(
+        server: &TestServer,
+        disable_reasoning: bool,
+    ) -> Result<Option<String>, String> {
+        send_chat_completion(
+            &provider("custom", &server.base_url),
+            String::new(),
+            "test-model",
+            "hi".to_string(),
+            disable_reasoning,
+            None,
+            Some(300),
+        )
+        .await
+    }
+
+    /// (reasoning sent, cap sent) for each request the server saw.
+    fn caps_sent(server: &TestServer) -> Vec<(bool, Option<Value>)> {
+        server
+            .requests()
+            .iter()
+            .map(|body| {
+                (
+                    body.get("reasoning_effort").is_some(),
+                    body.get("max_completion_tokens").cloned(),
+                )
+            })
+            .collect()
     }
 
     /// (reasoning sent, temperature sent) for each request the server saw.
@@ -1164,5 +1252,34 @@ Cleaned text."
         let server = serve(|_| ("500 Internal Server Error", "{}".to_string())).await;
         assert!(ask(&server, true).await.is_err());
         assert_eq!(fields_sent(&server), [(true, true)]);
+    }
+
+    #[tokio::test]
+    async fn the_cap_goes_out_only_while_thinking_is_off() {
+        let server = serve(|_| ("200 OK", completion("Cleaned text."))).await;
+        ask_capped(&server, true).await.unwrap();
+        ask_capped(&server, false).await.unwrap();
+        assert_eq!(
+            caps_sent(&server),
+            [(true, Some(serde_json::json!(300))), (false, None)]
+        );
+    }
+
+    #[tokio::test]
+    async fn rejected_reasoning_fields_take_the_cap_with_them() {
+        // Left free to think, the model would spend the cap on thinking.
+        let server = rejecting(&["reasoning_effort"]).await;
+        assert_eq!(
+            ask_capped(&server, true).await,
+            Ok(Some("Cleaned text.".into()))
+        );
+        assert_eq!(
+            caps_sent(&server),
+            [(true, Some(serde_json::json!(300))), (false, None)]
+        );
+
+        // Remembered: the next request carries neither.
+        ask_capped(&server, true).await.unwrap();
+        assert_eq!(caps_sent(&server)[2..], [(false, None)]);
     }
 }
