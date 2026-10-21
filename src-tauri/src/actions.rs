@@ -293,6 +293,12 @@ async fn post_process_transcription(
     // field the endpoint understands and retries without it if rejected.
     let disable_reasoning = matches!(provider.id.as_str(), "custom" | "openrouter" | "groq");
 
+    // Groq refuses a request whose possible output exceeds the per-minute
+    // output-token limit before the model runs, and with no cap that refused
+    // short dictations on its free tier. Size the cap from the transcription.
+    let max_completion_tokens =
+        (provider.id == "groq").then(|| crate::llm_client::answer_token_budget(transcription));
+
     if provider.supports_structured_output {
         debug!("Using structured outputs for provider '{}'", provider.id);
 
@@ -376,6 +382,7 @@ async fn post_process_transcription(
             Some(json_schema),
             disable_reasoning,
             settings.post_process_temperature,
+            max_completion_tokens,
         )
         .await
         {
@@ -434,6 +441,7 @@ async fn post_process_transcription(
         processed_prompt,
         disable_reasoning,
         settings.post_process_temperature,
+        max_completion_tokens,
     )
     .await
     {
@@ -1106,6 +1114,7 @@ mod tests {
         post_process_transcription, processed_or_failed, should_use_streaming_overlay,
         strip_think_block, PostProcessOutcome, MAX_FAILURE_REASON_CHARS,
     };
+    use crate::llm_client::answer_token_budget;
     use crate::llm_client::test_server::{completion, serve};
     use crate::settings::{AppSettings, OverlayStyle};
     use std::future;
@@ -1263,16 +1272,26 @@ mod tests {
 
     /// Settings that send post-processing to `base_url` via the custom provider.
     fn settings_for(base_url: &str, structured_output: bool) -> AppSettings {
+        settings_for_provider("custom", base_url, structured_output)
+    }
+
+    /// Settings that send post-processing to `base_url` as if it were
+    /// `provider_id`'s endpoint.
+    fn settings_for_provider(
+        provider_id: &str,
+        base_url: &str,
+        structured_output: bool,
+    ) -> AppSettings {
         let mut settings = crate::settings::get_default_settings();
         let provider = settings
-            .post_process_provider_mut("custom")
-            .expect("default settings include the custom provider");
+            .post_process_provider_mut(provider_id)
+            .expect("default settings include the provider");
         provider.base_url = base_url.to_string();
         provider.supports_structured_output = structured_output;
-        settings.post_process_provider_id = "custom".to_string();
+        settings.post_process_provider_id = provider_id.to_string();
         settings
             .post_process_models
-            .insert("custom".to_string(), "test-model".to_string());
+            .insert(provider_id.to_string(), "test-model".to_string());
         settings.post_process_selected_prompt_id =
             Some(settings.post_process_prompts[0].id.clone());
         settings
@@ -1321,6 +1340,24 @@ mod tests {
 
             let sent = server.requests()[0].get("temperature").cloned();
             assert_eq!(sent, temperature.map(|t| serde_json::json!(t)));
+        }
+    }
+
+    #[tokio::test]
+    async fn only_groq_is_told_how_long_the_answer_may_be() {
+        let transcription = "와 지리는데?";
+        let budget = Some(serde_json::json!(answer_token_budget(transcription)));
+        for (provider_id, structured_output, expected) in [
+            ("groq", false, budget.clone()),
+            ("groq", true, budget),
+            ("custom", false, None),
+        ] {
+            let server = serve(|_| ("200 OK", completion("Cleaned."))).await;
+            let settings = settings_for_provider(provider_id, &server.base_url, structured_output);
+            post_process_transcription(&settings, transcription).await;
+
+            let sent = server.requests()[0].get("max_completion_tokens").cloned();
+            assert_eq!(sent, expected);
         }
     }
 
