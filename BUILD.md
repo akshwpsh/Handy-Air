@@ -144,6 +144,22 @@ sudo cp -a src-tauri/transcribe-libs/. /usr/lib/Handy/
 
 Resources only need re-copying if they change upstream (new icons, sounds, models, etc.).
 
+## macOS signing certificate (Handy Air releases)
+
+This fork has no Apple Developer ID. CI signs macOS builds with a self-signed certificate
+instead, so that every build has the same designated requirement and macOS keeps the
+Accessibility grant across updates. Without it, builds fall back to ad-hoc signing.
+
+Create it once, on a Mac signed in to `gh`:
+
+```bash
+scripts/create-macos-signing-cert.sh
+```
+
+It stores the certificate as the `MACOS_SELF_SIGNED_CERTIFICATE` and
+`MACOS_SELF_SIGNED_CERTIFICATE_PASSWORD` repository secrets and backs it up in your login
+keychain. Keep the backup: a new certificate costs every user one more Accessibility grant.
+
 ## Troubleshooting
 
 ### macOS Accessibility remains enabled after a local rebuild
@@ -162,7 +178,11 @@ open /Applications/Handy.app
 ```
 
 Grant Accessibility again when prompted. This does not reset Microphone or other TCC
-services, and official releases normally do not need it.
+services.
+
+Handy Air releases need it only once: on the first update to a build signed with the fixed
+certificate (see [macOS signing certificate](#macos-signing-certificate-handy-air-releases)).
+Every later update keeps the same designated requirement, so the grant carries over.
 
 For optional diagnosis, compare the designated requirements of the previous and rebuilt
 bundles:

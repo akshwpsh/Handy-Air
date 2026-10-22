@@ -56,6 +56,11 @@ jobs:
     permissions:
       contents: write
     runs-on: ${{ inputs.platform }}
+    env:
+      # Whether the repository holds the fixed self-signed macOS certificate
+      # (see scripts/create-macos-signing-cert.sh). Step conditions cannot read
+      # secrets, so they read this instead.
+      HAS_MACOS_SELF_SIGNED_CERT: ${{ secrets.MACOS_SELF_SIGNED_CERTIFICATE != '' }}
     steps:
       # Kept for git checkout and general tooling headroom. The native
       # transcribe-cpp-sys build no longer needs path help: since 0.1.3 its
@@ -240,6 +245,53 @@ jobs:
           CERT_ID=$(echo "$CERT_INFO" | awk -F'"' '{print $2}')
           echo "CERT_ID=$CERT_ID" >> $GITHUB_ENV
           echo "Certificate imported."
+
+      # An ad-hoc signature's designated requirement is its cdhash, which every
+      # build changes, so macOS takes each update for a new app and drops its
+      # Accessibility grant. Signed with a certificate, the requirement names
+      # the certificate instead and stays the same from build to build. This
+      # one is self-signed (the fork has no Apple Developer ID), so the runner
+      # must be told to trust it before codesign will use it.
+      - name: Import the fixed self-signed signing certificate (macOS)
+        if: contains(inputs.platform, 'macos') && !inputs.sign-binaries && env.HAS_MACOS_SELF_SIGNED_CERT == 'true'
+        env:
+          MACOS_SELF_SIGNED_CERTIFICATE: ${{ secrets.MACOS_SELF_SIGNED_CERTIFICATE }}
+          MACOS_SELF_SIGNED_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_SELF_SIGNED_CERTIFICATE_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/self-signed.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          printf '%s' "$MACOS_SELF_SIGNED_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/self-signed.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/self-signed.p12" -k "$keychain" -f pkcs12 \
+            -P "$MACOS_SELF_SIGNED_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/self-signed.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
+            -k "$keychain_password" "$keychain" > /dev/null
+          # codesign finds the identity through the search list.
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+          security find-certificate -a -p "$keychain" > "$RUNNER_TEMP/self-signed.pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign \
+            -k /Library/Keychains/System.keychain "$RUNNER_TEMP/self-signed.pem"
+          rm "$RUNNER_TEMP/self-signed.pem"
+
+          identity="$(security find-identity -v -p codesigning "$keychain" | awk '$1 == "1)" { print $2 }')"
+          if [ -z "$identity" ]; then
+            echo "::error::The self-signed certificate is not a valid code-signing identity on this runner"
+            security find-identity -p codesigning "$keychain"
+            exit 1
+          fi
+
+          # tauri's bundler signs with bundle.macOS.signingIdentity, which the
+          # committed config leaves at "-" (ad-hoc) for local builds.
+          jq --arg identity "$identity" '.bundle.macOS.signingIdentity = $identity' \
+            src-tauri/tauri.conf.json > "$RUNNER_TEMP/tauri.conf.json"
+          mv "$RUNNER_TEMP/tauri.conf.json" src-tauri/tauri.conf.json
+          echo "macOS bundles will be signed with $identity"
 
       - name: Patch asset name pattern
         id: patch-release-name
@@ -582,6 +634,21 @@ jobs:
               exit 1
             fi
           )
+
+      - name: Verify the macOS bundle is signed with the fixed certificate
+        if: contains(inputs.platform, 'macos') && !inputs.sign-binaries && env.HAS_MACOS_SELF_SIGNED_CERT == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(find src-tauri/target -type d -path '*/bundle/macos/*.app' -print -quit)"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          requirement="$(codesign -d -r- "$app" 2>&1 | grep '^designated =>')"
+          echo "$requirement"
+          # An ad-hoc requirement is only a cdhash; a certificate one names the certificate.
+          if [[ "$requirement" != *"certificate "* ]]; then
+            echo "::error::$app is not signed with the fixed certificate"
+            exit 1
+          fi
 
       - name: Verify macOS dylib bundling
         if: inputs.target == 'x86_64-apple-darwin'
